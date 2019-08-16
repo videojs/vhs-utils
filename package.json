@@ -1,0 +1,88 @@
+{
+  "name": "@videojs/vhs-utils",
+  "version": "0.0.0",
+  "description": "Objects and functions shared throughtout @videojs/http-streaming code",
+  "main": "dist/vhs-utils.cjs.js",
+  "module": "dist/vhs-utils.es.js",
+  "generator-videojs-plugin": {
+    "version": "7.7.1"
+  },
+  "browserslist": [
+    "defaults",
+    "ie 11"
+  ],
+  "scripts": {
+    "build": "npm-run-all -s clean -p build:*",
+    "build-prod": "cross-env-shell NO_TEST_BUNDLE=1 'npm run build'",
+    "build-test": "cross-env-shell TEST_BUNDLE_ONLY=1 'npm run build'",
+    "build:js": "rollup -c scripts/rollup.config.js",
+    "clean": "shx rm -rf ./dist ./test/dist && shx mkdir -p ./dist ./test/dist",
+    "lint": "vjsstandard",
+    "server": "karma start scripts/karma.conf.js --singleRun=false --auto-watch",
+    "start": "npm-run-all -p server watch",
+    "test": "npm-run-all lint build-test && karma start scripts/karma.conf.js",
+    "posttest": "shx cat test/dist/coverage/text.txt",
+    "update-changelog": "conventional-changelog -p videojs -i CHANGELOG.md -s",
+    "preversion": "npm test",
+    "version": "is-prerelease || npm run update-changelog && git add CHANGELOG.md",
+    "watch": "npm-run-all -p watch:*",
+    "watch:js": "npm run build:js -- -w",
+    "prepublishOnly": "npm-run-all build-prod && vjsverify --verbose"
+  },
+  "engines": {
+    "node": ">=8",
+    "npm": ">=5"
+  },
+  "keywords": [
+    "videojs",
+    "videojs-plugin"
+  ],
+  "author": "brandonocasey <brandonocasey@gmail.com>",
+  "license": "MIT",
+  "vjsstandard": {
+    "ignore": [
+      "dist",
+      "docs",
+      "test/dist"
+    ]
+  },
+  "files": [
+    "CONTRIBUTING.md",
+    "dist/",
+    "docs/",
+    "index.html",
+    "scripts/",
+    "src/",
+    "test/"
+  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "vjsstandard --fix",
+      "git add"
+    ],
+    "README.md": [
+      "doctoc --notitle",
+      "git add"
+    ]
+  },
+  "dependencies": {
+    "global": "^4.3.2",
+    "url-toolkit": "^2.1.6",
+    "@babel/runtime": "^7.5.5"
+  },
+  "devDependencies": {
+    "@videojs/generator-helpers": "~1.2.0",
+    "karma": "^4.0.0",
+    "rollup": "^1.12.0",
+    "sinon": "^7.2.2",
+    "videojs-generate-karma-config": "~5.3.0",
+    "videojs-generate-rollup-config": "~5.0.0",
+    "videojs-generator-verify": "~1.2.0",
+    "videojs-standard": "^8.0.3"
+  }
+}
