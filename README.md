@@ -4,6 +4,7 @@
 
 - [@videojs/vhs-utils](#videojsvhs-utils)
   - [Installation](#installation)
+  - [Usage](#usage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -16,3 +17,10 @@ Objects and functions shared throughtout @videojs/http-streaming code
 ```sh
 npm install --save @videojs/vhs-utils
 ```
+
+## Usage
+
+All utility functions are published under dist and can be required/imported like so:
+
+`import resolveUrl from '@videojs/vhs-utils/dist/resolve-url';`
+`const resolveUrl = require('@videojs/vhs-utils/dist/resolve-url');`

@@ -2,8 +2,6 @@
   "name": "@videojs/vhs-utils",
   "version": "0.0.0",
   "description": "Objects and functions shared throughtout @videojs/http-streaming code",
-  "main": "dist/vhs-utils.cjs.js",
-  "module": "dist/vhs-utils.es.js",
   "generator-videojs-plugin": {
     "version": "7.7.1"
   },
@@ -27,7 +25,7 @@
     "version": "is-prerelease || npm run update-changelog && git add CHANGELOG.md",
     "watch": "npm-run-all -p watch:*",
     "watch:js": "npm run build:js -- -w",
-    "prepublishOnly": "npm-run-all build-prod && vjsverify --verbose"
+    "prepublishOnly": "npm-run-all build-prod && vjsverify --verbose --skip-es-check"
   },
   "engines": {
     "node": ">=8",
