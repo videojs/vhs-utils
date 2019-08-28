@@ -101,8 +101,16 @@ export default class Stream {
    * @see http://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
    */
   pipe(destination) {
-    this.on('data', function(data) {
-      destination.push(data);
+    this.on('data', function() {
+      if (arguments.length === 1) {
+        destination.push(arguments[0]);
+      } else {
+        const args = Array.prototype.slice.call(arguments, 0);
+
+        args.forEach(function(arg) {
+          destination.push(arg);
+        });
+      }
     });
   }
 }
