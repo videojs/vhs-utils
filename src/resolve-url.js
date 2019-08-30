@@ -9,7 +9,7 @@ const resolveUrl = (baseUrl, relativeUrl) => {
 
   // if the base URL is relative then combine with the current location
   if (!(/\/\//i).test(baseUrl)) {
-    baseUrl = URLToolkit.buildAbsoluteURL(window.location.href, baseUrl);
+    baseUrl = URLToolkit.buildAbsoluteURL(window.location && window.location.href || '', baseUrl);
   }
 
   return URLToolkit.buildAbsoluteURL(baseUrl, relativeUrl);

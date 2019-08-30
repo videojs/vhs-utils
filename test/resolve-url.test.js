@@ -7,7 +7,11 @@ import resolveUrl from '../src/resolve-url';
 QUnit.module('URL resolver');
 
 QUnit.test('works with a selection of valid urls', function(assert) {
-  const currentLocation = window.location.protocol + '//' + window.location.host;
+  let currentLocation = '';
+
+  if (window.location && window.location.protocol) {
+    currentLocation = window.location.protocol + '//' + window.location.host;
+  }
 
   assert.equal(
     resolveUrl('http://a.com/b/cd/e.m3u8', 'https://example.com/z.ts'),
