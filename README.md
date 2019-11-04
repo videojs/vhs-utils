@@ -10,7 +10,12 @@
 
 # @videojs/vhs-utils
 
-Objects and functions shared throughtout @videojs/http-streaming code
+vhs-utils serves two purposes:
+
+1. It extracts objects and functions shared throughout @videojs/http-streaming code to save on package size. See [the original @videojs/http-streaming PR](https://github.com/videojs/http-streaming/pull/637) for details.
+2. It exports functions useful to plugin authors to mimic some logic VHS uses internally.
+
+Note that for the case of 2, although the functions are exported, they may change at any time, although appropriate semantic versioning of this module will be maintained.
 
 ## Installation
 
