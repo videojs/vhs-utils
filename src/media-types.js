@@ -1,5 +1,5 @@
-const mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
-const dashRE = /^application\/dash\+xml/i;
+const MPEGURL_REGEX = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
+const DASH_REGEX = /^application\/dash\+xml/i;
 
 /**
  * Returns a string that describes the type of source based on a video source object's
@@ -13,16 +13,16 @@ const dashRE = /^application\/dash\+xml/i;
  *         VHS source type string
  */
 export const simpleTypeFromSourceType = (type) => {
-  if (mpegurlRE.test(type)) {
+  if (MPEGURL_REGEX.test(type)) {
     return 'hls';
   }
 
-  if (dashRE.test(type)) {
+  if (DASH_REGEX.test(type)) {
     return 'dash';
   }
 
-  // Denotes the special case of a pre-parsed manifest object passed in instead of the
-  // traditional source URL.
+  // Denotes the special case of a manifest object passed to http-streaming instead of a
+  // source URL.
   //
   // See https://en.wikipedia.org/wiki/Media_type for details on specifying media types.
   //
