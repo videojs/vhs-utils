@@ -1,3 +1,10 @@
+<a name="1.2.1"></a>
+## [1.2.1](https://github.com/videojs/vhs-utils/compare/v1.2.0...v1.2.1) (2020-01-15)
+
+### Bug Fixes
+
+* include videojs in VHS JSON media type (#7) ([da072f0](https://github.com/videojs/vhs-utils/commit/da072f0)), closes [#7](https://github.com/videojs/vhs-utils/issues/7)
+
 <a name="1.2.0"></a>
 # [1.2.0](https://github.com/videojs/vhs-utils/compare/v1.1.0...v1.2.0) (2019-12-06)
 
