@@ -34,8 +34,8 @@ QUnit.test(
 
 QUnit.test('simpleTypeFromSourceType converts VHS media type to vhs-json', function(assert) {
   assert.equal(
-    simpleTypeFromSourceType('application/vnd.vhs+json'),
+    simpleTypeFromSourceType('application/vnd.videojs.vhs+json'),
     'vhs-json',
-    'supports application/vnd.vhs+json'
+    'supports application/vnd.videojs.vhs+json'
   );
 });

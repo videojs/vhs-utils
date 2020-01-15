@@ -26,9 +26,9 @@ export const simpleTypeFromSourceType = (type) => {
   //
   // See https://en.wikipedia.org/wiki/Media_type for details on specifying media types.
   //
-  // In this case, vnd is for vendor, VHS is for this project, and the +json suffix
-  // identifies the structure of the media type.
-  if (type === 'application/vnd.vhs+json') {
+  // In this case, vnd stands for vendor, video.js for the organization, VHS for this
+  // project, and the +json suffix identifies the structure of the media type.
+  if (type === 'application/vnd.videojs.vhs+json') {
     return 'vhs-json';
   }
 
