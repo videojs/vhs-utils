@@ -1,3 +1,10 @@
+<a name="1.3.0"></a>
+# [1.3.0](https://github.com/videojs/vhs-utils/compare/v1.2.1...v1.3.0) (2020-02-05)
+
+### Features
+
+* add forEachMediaGroup in media-groups module (#8) ([a1eacf4](https://github.com/videojs/vhs-utils/commit/a1eacf4)), closes [#8](https://github.com/videojs/vhs-utils/issues/8)
+
 <a name="1.2.1"></a>
 ## [1.2.1](https://github.com/videojs/vhs-utils/compare/v1.2.0...v1.2.1) (2020-01-15)
 
