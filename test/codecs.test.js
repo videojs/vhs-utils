@@ -1,10 +1,30 @@
+import window from 'global/window';
 import QUnit from 'qunit';
 import {
   mapLegacyAvcCodecs,
   translateLegacyCodecs,
   parseCodecs,
-  audioProfileFromDefault
+  codecsFromDefault,
+  isVideoCodec,
+  isAudioCodec,
+  muxerSupportsCodec,
+  browserSupportsCodec,
+  isCodecSupported
 } from '../src/codecs';
+
+const supportedMuxerCodecs = [
+  'mp4a',
+  'avc1',
+  'vp09',
+  'av01'
+];
+
+const unsupportedMuxerCodecs = [
+  'hvc1',
+  'ac-3',
+  'ec-3',
+  'mp3'
+];
 
 QUnit.module('Legacy Codecs');
 
@@ -110,8 +130,7 @@ QUnit.test('parses video only codec string', function(assert) {
     {
       codecCount: 1,
       videoCodec: 'avc1',
-      videoObjectTypeIndicator: '.42001e',
-      audioProfile: null
+      videoObjectTypeIndicator: '.42001e'
     },
     'parsed video only codec string'
   );
@@ -122,7 +141,8 @@ QUnit.test('parses audio only codec string', function(assert) {
     parseCodecs('mp4a.40.2'),
     {
       codecCount: 1,
-      audioProfile: '2'
+      audioCodec: 'mp4a',
+      audioProfile: '.40.2'
     },
     'parsed audio only codec string'
   );
@@ -134,18 +154,19 @@ QUnit.test('parses video and audio codec string', function(assert) {
     {
       codecCount: 2,
       videoCodec: 'avc1',
+      audioCodec: 'mp4a',
       videoObjectTypeIndicator: '.42001e',
-      audioProfile: '2'
+      audioProfile: '.40.2'
     },
     'parsed video and audio codec string'
   );
 });
 
-QUnit.module('audioProfileFromDefault');
+QUnit.module('codecsFromDefault');
 
 QUnit.test('returns falsey when no audio group ID', function(assert) {
   assert.notOk(
-    audioProfileFromDefault(
+    codecsFromDefault(
       { mediaGroups: { AUDIO: {} } },
       '',
     ),
@@ -155,7 +176,7 @@ QUnit.test('returns falsey when no audio group ID', function(assert) {
 
 QUnit.test('returns falsey when no matching audio group', function(assert) {
   assert.notOk(
-    audioProfileFromDefault(
+    codecsFromDefault(
       {
         mediaGroups: {
           AUDIO: {
@@ -184,7 +205,7 @@ QUnit.test('returns falsey when no matching audio group', function(assert) {
 
 QUnit.test('returns falsey when no default for audio group', function(assert) {
   assert.notOk(
-    audioProfileFromDefault(
+    codecsFromDefault(
       {
         mediaGroups: {
           AUDIO: {
@@ -213,7 +234,7 @@ QUnit.test('returns falsey when no default for audio group', function(assert) {
 
 QUnit.test('returns audio profile for default in audio group', function(assert) {
   assert.deepEqual(
-    audioProfileFromDefault(
+    codecsFromDefault(
       {
         mediaGroups: {
           AUDIO: {
@@ -236,7 +257,116 @@ QUnit.test('returns audio profile for default in audio group', function(assert) 
       },
       'au1'
     ),
-    '5',
+    {audioCodec: 'mp4a', audioProfile: '.40.5', codecCount: 1},
     'returned parsed codec audio profile'
   );
+});
+
+QUnit.module('isVideoCodec');
+QUnit.test('works as expected', function(assert) {
+  ['avc1', 'vp09', 'av01'].forEach(function(codec) {
+    assert.ok(isVideoCodec(codec), `"${codec}" is seen as a video codec`);
+    assert.ok(isVideoCodec(` ${codec} `), `" ${codec} " is seen as video codec`);
+    assert.ok(isVideoCodec(codec.toUpperCase()), `"${codec.toUpperCase()}" is seen as video codec`);
+  });
+
+  ['invalid', 'foo', 'avc', 'vp9', 'vp08', 'hvc1'].forEach(function(codec) {
+    assert.notOk(isVideoCodec(codec), `${codec} is not a video codec`);
+  });
+
+});
+
+QUnit.module('isAudioCodec');
+QUnit.test('works as expected', function(assert) {
+  ['mp4a'].forEach(function(codec) {
+    assert.ok(isAudioCodec(codec), `"${codec}" is seen as an audio codec`);
+    assert.ok(isAudioCodec(` ${codec} `), `" ${codec} " is seen as an audio codec`);
+    assert.ok(isAudioCodec(codec.toUpperCase()), `"${codec.toUpperCase()}" is seen as an audio codec`);
+  });
+
+  ['invalid', 'ac-3', 'ec-3', 'foo', 'mp3'].forEach(function(codec) {
+    assert.notOk(isAudioCodec(codec), `${codec} is not an audio codec`);
+  });
+});
+
+QUnit.module('muxerSupportCodec');
+QUnit.test('works as expected', function(assert) {
+  const validMuxerCodecs = [];
+  const invalidMuxerCodecs = [];
+
+  unsupportedMuxerCodecs.forEach(function(badCodec) {
+    invalidMuxerCodecs.push(badCodec);
+    supportedMuxerCodecs.forEach(function(goodCodec) {
+      invalidMuxerCodecs.push(`${goodCodec}, ${badCodec}`);
+    });
+  });
+
+  // generate all combinations of valid codecs
+  supportedMuxerCodecs.forEach(function(codec, i) {
+    validMuxerCodecs.push(codec);
+
+    supportedMuxerCodecs.forEach(function(subcodec, z) {
+      if (z === i) {
+        return;
+      }
+      validMuxerCodecs.push(`${codec}, ${subcodec}`);
+      validMuxerCodecs.push(`${codec},${subcodec}`);
+    });
+  });
+
+  validMuxerCodecs.forEach(function(codec) {
+    assert.ok(muxerSupportsCodec(codec), `"${codec}" is supported`);
+    assert.ok(muxerSupportsCodec(` ${codec} `), `" ${codec} " is supported`);
+    assert.ok(muxerSupportsCodec(codec.toUpperCase()), `"${codec.toUpperCase()}" is supported`);
+  });
+
+  invalidMuxerCodecs.forEach(function(codec) {
+    assert.notOk(muxerSupportsCodec(codec), `${codec} not supported`);
+  });
+});
+
+QUnit.module('browserSupportsCodec', {
+  beforeEach() {
+    this.oldMediaSource = window.MediaSource;
+  },
+  afterEach() {
+    window.MediaSource = this.oldMediaSource;
+  }
+});
+
+QUnit.test('works as expected', function(assert) {
+  window.MediaSource = {isTypeSupported: () => true};
+  assert.ok(browserSupportsCodec('test'), 'isTypeSupported true, browser does support codec');
+
+  window.MediaSource = {isTypeSupported: () => false};
+  assert.notOk(browserSupportsCodec('test'), 'isTypeSupported false, browser does not support codec');
+
+  window.MediaSource = null;
+  assert.notOk(browserSupportsCodec('test'), 'no MediaSource, browser does not support codec');
+
+  window.MediaSource = {isTypeSupported: null};
+  assert.notOk(browserSupportsCodec('test'), 'no isTypeSupported, browser does not support codec');
+});
+
+QUnit.module('isCodecSupported', {
+  beforeEach() {
+    this.oldMediaSource = window.MediaSource;
+  },
+  afterEach() {
+    window.MediaSource = this.oldMediaSource;
+  }
+});
+
+QUnit.test('works as expected', function(assert) {
+  window.MediaSource = {isTypeSupported: () => true};
+  assert.ok(isCodecSupported(supportedMuxerCodecs[0]), 'browser true, muxer true, supported');
+
+  window.MediaSource = {isTypeSupported: () => false};
+  assert.notOk(isCodecSupported(supportedMuxerCodecs[0]), 'browser false, muxer true, not supported');
+
+  window.MediaSource = {isTypeSupported: () => true};
+  assert.notOk(isCodecSupported(unsupportedMuxerCodecs[0]), 'browser true, muxer false, not supported');
+
+  window.MediaSource = {isTypeSupported: () => false};
+  assert.notOk(isCodecSupported(unsupportedMuxerCodecs[0]), 'browser false, muxer false, not supported');
 });

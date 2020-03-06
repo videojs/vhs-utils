@@ -1,3 +1,7 @@
+import window from 'global/window';
+const videoSupportRegex = RegExp('^(avc[13]|vp09|av01)');
+const audioSupportRegex = RegExp('^(mp4a)');
+
 /**
  * Replace the old apple-style `avc1.<dd>.<dd>` codec string with the standard
  * `avc1.<hhhhhh>`
@@ -66,31 +70,33 @@ export const mapLegacyAvcCodecs = function(codecString) {
  * Parses a codec string to retrieve the number of codecs specified, the video codec and
  * object type indicator, and the audio profile.
  *
- * @param {string} [codecs]
+ * @param {string} [codecString]
  *        The codec string to parse
  * @return {ParsedCodecInfo}
  *         Parsed codec info
  */
-export const parseCodecs = function(codecs = '') {
-  const result = {
-    codecCount: 0
-  };
+export const parseCodecs = function(codecString = '') {
+  const codecs = codecString.toLowerCase().split(',');
+  const result = {codecCount: 0};
 
-  result.codecCount = codecs.split(',').length;
-  result.codecCount = result.codecCount || 2;
+  codecs.forEach(function(codec) {
+    codec = codec.trim();
 
-  // parse the video codec
-  const parsed = (/(^|\s|,)+(avc[13]|vp09|av01)([^ ,]*)/i).exec(codecs);
+    const videoCodecMatch = videoSupportRegex.exec(codec);
+    const audioCodecMatch = audioSupportRegex.exec(codec);
 
-  if (parsed) {
-    result.videoCodec = parsed[2];
-    result.videoObjectTypeIndicator = parsed[3];
-  }
+    if (videoCodecMatch && videoCodecMatch.length > 1) {
+      result.videoCodec = videoCodecMatch[1];
+      result.videoObjectTypeIndicator = codec.replace(result.videoCodec, '');
+      result.codecCount++;
+    }
 
-  // parse the last field of the audio codec
-  result.audioProfile =
-    (/(^|\s|,)+mp4a.[0-9A-Fa-f]+\.([0-9A-Fa-f]+)/i).exec(codecs);
-  result.audioProfile = result.audioProfile && result.audioProfile[2];
+    if (audioCodecMatch && audioCodecMatch.length > 1) {
+      result.audioCodec = audioCodecMatch[1];
+      result.audioProfile = codec.replace(result.audioCodec, '');
+      result.codecCount++;
+    }
+  });
 
   return result;
 };
@@ -106,7 +112,7 @@ export const parseCodecs = function(codecs = '') {
  * @return {ParsedCodecInfo}
  *         Parsed codec info
  */
-export const audioProfileFromDefault = (master, audioGroupId) => {
+export const codecsFromDefault = (master, audioGroupId) => {
   if (!master.mediaGroups.AUDIO || !audioGroupId) {
     return null;
   }
@@ -122,9 +128,27 @@ export const audioProfileFromDefault = (master, audioGroupId) => {
 
     if (audioType.default && audioType.playlists) {
       // codec should be the same for all playlists within the audio type
-      return parseCodecs(audioType.playlists[0].attributes.CODECS).audioProfile;
+      return parseCodecs(audioType.playlists[0].attributes.CODECS);
     }
   }
 
   return null;
 };
+
+export const isVideoCodec = (codec) => videoSupportRegex.test(codec.trim().toLowerCase());
+export const isAudioCodec = (codec) => audioSupportRegex.test(codec.trim().toLowerCase());
+export const muxerSupportsCodec = (codecString) => codecString.split(',').every(function(codec) {
+  if (isAudioCodec(codec) || isVideoCodec(codec)) {
+    return true;
+  }
+});
+
+export const browserSupportsCodec = (codecString) => window.MediaSource &&
+  window.MediaSource.isTypeSupported &&
+  window.MediaSource.isTypeSupported(`video/mp4; codecs="${mapLegacyAvcCodecs(codecString)}"`) || false;
+export const isCodecSupported = (codecString) =>
+  muxerSupportsCodec(codecString) && browserSupportsCodec(codecString);
+
+export const DEFAULT_AUDIO_CODEC = 'mp4a.40.2';
+export const DEFAULT_VIDEO_CODEC = 'avc1.4d400d';
+
