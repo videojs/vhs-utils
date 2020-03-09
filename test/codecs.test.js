@@ -14,9 +14,7 @@ import {
 
 const supportedMuxerCodecs = [
   'mp4a',
-  'avc1',
-  'vp09',
-  'av01'
+  'avc1'
 ];
 
 const unsupportedMuxerCodecs = [
@@ -264,13 +262,27 @@ QUnit.test('returns audio profile for default in audio group', function(assert) 
 
 QUnit.module('isVideoCodec');
 QUnit.test('works as expected', function(assert) {
-  ['avc1', 'vp09', 'av01'].forEach(function(codec) {
+  [
+    'av1',
+    'avc01',
+    'avc1',
+    'avc02',
+    'avc2',
+    'vp09',
+    'vp9',
+    'vp8',
+    'vp08',
+    'hvc1',
+    'hev1',
+    'theora',
+    'mp4v'
+  ].forEach(function(codec) {
     assert.ok(isVideoCodec(codec), `"${codec}" is seen as a video codec`);
     assert.ok(isVideoCodec(` ${codec} `), `" ${codec} " is seen as video codec`);
     assert.ok(isVideoCodec(codec.toUpperCase()), `"${codec.toUpperCase()}" is seen as video codec`);
   });
 
-  ['invalid', 'foo', 'avc', 'vp9', 'vp08', 'hvc1'].forEach(function(codec) {
+  ['invalid', 'foo', 'mp4a', 'opus', 'vorbis'].forEach(function(codec) {
     assert.notOk(isVideoCodec(codec), `${codec} is not a video codec`);
   });
 
@@ -278,13 +290,22 @@ QUnit.test('works as expected', function(assert) {
 
 QUnit.module('isAudioCodec');
 QUnit.test('works as expected', function(assert) {
-  ['mp4a'].forEach(function(codec) {
+  [
+    'mp4a',
+    'flac',
+    'vorbis',
+    'opus',
+    'ac-3',
+    'ac-4',
+    'ec-3',
+    'alac'
+  ].forEach(function(codec) {
     assert.ok(isAudioCodec(codec), `"${codec}" is seen as an audio codec`);
     assert.ok(isAudioCodec(` ${codec} `), `" ${codec} " is seen as an audio codec`);
     assert.ok(isAudioCodec(codec.toUpperCase()), `"${codec.toUpperCase()}" is seen as an audio codec`);
   });
 
-  ['invalid', 'ac-3', 'ec-3', 'foo', 'mp3'].forEach(function(codec) {
+  ['invalid', 'foo', 'bar', 'avc1', 'av1'].forEach(function(codec) {
     assert.notOk(isAudioCodec(codec), `${codec} is not an audio codec`);
   });
 });

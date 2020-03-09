@@ -1,6 +1,10 @@
 import window from 'global/window';
-const videoSupportRegex = RegExp('^(avc[13]|vp09|av01)');
-const audioSupportRegex = RegExp('^(mp4a)');
+
+const videoCodecRegex = RegExp('^(av1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)');
+const audioCodecRegex = RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac)');
+
+const muxerVideoRegex = RegExp('^(avc0?1)');
+const muxerAudioRegex = RegExp('^(mp4a)');
 
 /**
  * Replace the old apple-style `avc1.<dd>.<dd>` codec string with the standard
@@ -82,8 +86,8 @@ export const parseCodecs = function(codecString = '') {
   codecs.forEach(function(codec) {
     codec = codec.trim();
 
-    const videoCodecMatch = videoSupportRegex.exec(codec);
-    const audioCodecMatch = audioSupportRegex.exec(codec);
+    const videoCodecMatch = videoCodecRegex.exec(codec);
+    const audioCodecMatch = audioCodecRegex.exec(codec);
 
     if (videoCodecMatch && videoCodecMatch.length > 1) {
       result.videoCodec = videoCodecMatch[1];
@@ -135,10 +139,12 @@ export const codecsFromDefault = (master, audioGroupId) => {
   return null;
 };
 
-export const isVideoCodec = (codec) => videoSupportRegex.test(codec.trim().toLowerCase());
-export const isAudioCodec = (codec) => audioSupportRegex.test(codec.trim().toLowerCase());
+export const isVideoCodec = (codec) => videoCodecRegex.test(codec.trim().toLowerCase());
+export const isAudioCodec = (codec) => audioCodecRegex.test(codec.trim().toLowerCase());
 export const muxerSupportsCodec = (codecString) => codecString.split(',').every(function(codec) {
-  if (isAudioCodec(codec) || isVideoCodec(codec)) {
+  codec = codec.trim().toLowerCase();
+
+  if (muxerVideoRegex.test(codec) || muxerAudioRegex.test(codec)) {
     return true;
   }
 });
