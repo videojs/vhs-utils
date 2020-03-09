@@ -9,7 +9,8 @@ import {
   isAudioCodec,
   muxerSupportsCodec,
   browserSupportsCodec,
-  isCodecSupported
+  isCodecSupported,
+  getMimeForCodec
 } from '../src/codecs';
 
 const supportedMuxerCodecs = [
@@ -125,11 +126,7 @@ QUnit.module('parseCodecs');
 QUnit.test('parses video only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e'),
-    {
-      codecCount: 1,
-      videoCodec: 'avc1',
-      videoObjectTypeIndicator: '.42001e'
-    },
+    {video: {type: 'avc1', details: '.42001e'}},
     'parsed video only codec string'
   );
 });
@@ -137,11 +134,7 @@ QUnit.test('parses video only codec string', function(assert) {
 QUnit.test('parses audio only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('mp4a.40.2'),
-    {
-      codecCount: 1,
-      audioCodec: 'mp4a',
-      audioProfile: '.40.2'
-    },
+    {audio: {type: 'mp4a', details: '.40.2'}},
     'parsed audio only codec string'
   );
 });
@@ -150,11 +143,8 @@ QUnit.test('parses video and audio codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e, mp4a.40.2'),
     {
-      codecCount: 2,
-      videoCodec: 'avc1',
-      audioCodec: 'mp4a',
-      videoObjectTypeIndicator: '.42001e',
-      audioProfile: '.40.2'
+      video: {type: 'avc1', details: '.42001e'},
+      audio: {type: 'mp4a', details: '.40.2'}
     },
     'parsed video and audio codec string'
   );
@@ -255,7 +245,7 @@ QUnit.test('returns audio profile for default in audio group', function(assert) 
       },
       'au1'
     ),
-    {audioCodec: 'mp4a', audioProfile: '.40.5', codecCount: 1},
+    {audio: {type: 'mp4a', details: '.40.5'}},
     'returned parsed codec audio profile'
   );
 });
@@ -390,4 +380,30 @@ QUnit.test('works as expected', function(assert) {
 
   window.MediaSource = {isTypeSupported: () => false};
   assert.notOk(isCodecSupported(unsupportedMuxerCodecs[0]), 'browser false, muxer false, not supported');
+});
+
+QUnit.module('getMimeForCodec');
+
+QUnit.test('works as expected', function(assert) {
+  // mp4
+  assert.equal(getMimeForCodec('vp9,mp4a'), 'video/mp4;codecs="vp9,mp4a"', 'mp4 video/audio works');
+  assert.equal(getMimeForCodec('vp9'), 'video/mp4;codecs="vp9"', 'mp4 video works');
+  assert.equal(getMimeForCodec('mp4a'), 'audio/mp4;codecs="mp4a"', 'mp4 audio works');
+
+  // webm
+  assert.equal(getMimeForCodec('vp8,opus'), 'video/webm;codecs="vp8,opus"', 'webm video/audio works');
+  assert.equal(getMimeForCodec('vp8'), 'video/webm;codecs="vp8"', 'webm video works');
+  assert.equal(getMimeForCodec('vorbis'), 'audio/webm;codecs="vorbis"', 'webm audio works');
+
+  // ogg
+  assert.equal(getMimeForCodec('theora,vorbis'), 'video/ogg;codecs="theora,vorbis"', 'ogg video/audio works');
+  assert.equal(getMimeForCodec('theora'), 'video/ogg;codecs="theora"', 'ogg video works');
+  // ogg will never be selected for audio only
+
+  // mixed
+  assert.equal(getMimeForCodec('opus'), 'audio/mp4;codecs="opus"', 'mp4 takes priority over everything');
+  assert.equal(getMimeForCodec('vorbis'), 'audio/webm;codecs="vorbis"', 'webm takes priority over ogg');
+  assert.equal(getMimeForCodec('foo'), 'video/mp4;codecs="foo"', 'mp4 is the default');
+
+  assert.notOk(getMimeForCodec(), 'invalid codec returns undefined');
 });

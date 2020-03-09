@@ -1,7 +1,11 @@
 import window from 'global/window';
 
-const videoCodecRegex = RegExp('^(av1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)');
-const audioCodecRegex = RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac)');
+const mp4Regex = RegExp('^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)');
+const webmRegex = RegExp('^(vp0?[89]|av0?1|opus|vorbis)');
+const oggRegex = RegExp('^(vp0?[89]|theora|flac|opus|vorbis)');
+
+const videoCodecRegex = RegExp('^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)');
+const audioCodecRegex = RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)');
 
 const muxerVideoRegex = RegExp('^(avc0?1)');
 const muxerAudioRegex = RegExp('^(mp4a)');
@@ -81,24 +85,26 @@ export const mapLegacyAvcCodecs = function(codecString) {
  */
 export const parseCodecs = function(codecString = '') {
   const codecs = codecString.toLowerCase().split(',');
-  const result = {codecCount: 0};
+  const result = {};
 
   codecs.forEach(function(codec) {
-    codec = codec.trim();
+    codec = translateLegacyCodec(codec.trim());
 
     const videoCodecMatch = videoCodecRegex.exec(codec);
     const audioCodecMatch = audioCodecRegex.exec(codec);
 
     if (videoCodecMatch && videoCodecMatch.length > 1) {
-      result.videoCodec = videoCodecMatch[1];
-      result.videoObjectTypeIndicator = codec.replace(result.videoCodec, '');
-      result.codecCount++;
+      result.video = {
+        type: videoCodecMatch[1],
+        details: codec.replace(videoCodecMatch[1], '')
+      };
     }
 
     if (audioCodecMatch && audioCodecMatch.length > 1) {
-      result.audioCodec = audioCodecMatch[1];
-      result.audioProfile = codec.replace(result.audioCodec, '');
-      result.codecCount++;
+      result.audio = {
+        type: audioCodecMatch[1],
+        details: codec.replace(audioCodecMatch[1], '')
+      };
     }
   });
 
@@ -139,9 +145,9 @@ export const codecsFromDefault = (master, audioGroupId) => {
   return null;
 };
 
-export const isVideoCodec = (codec) => videoCodecRegex.test(codec.trim().toLowerCase());
-export const isAudioCodec = (codec) => audioCodecRegex.test(codec.trim().toLowerCase());
-export const muxerSupportsCodec = (codecString) => codecString.split(',').every(function(codec) {
+export const isVideoCodec = (codec = '') => videoCodecRegex.test(codec.trim().toLowerCase());
+export const isAudioCodec = (codec = '') => audioCodecRegex.test(codec.trim().toLowerCase());
+export const muxerSupportsCodec = (codecString = '') => codecString.split(',').every(function(codec) {
   codec = codec.trim().toLowerCase();
 
   if (muxerVideoRegex.test(codec) || muxerAudioRegex.test(codec)) {
@@ -149,9 +155,43 @@ export const muxerSupportsCodec = (codecString) => codecString.split(',').every(
   }
 });
 
-export const browserSupportsCodec = (codecString) => window.MediaSource &&
+export const getMimeForCodec = (codecString) => {
+  if (!codecString || typeof codecString !== 'string') {
+    return;
+  }
+  const codecs = codecString
+    .toLowerCase()
+    .split(',')
+    .map((c) => translateLegacyCodec(c.trim()));
+
+  // default to video type
+  let type = 'video';
+
+  // only change to audio type if the only codec we have is
+  // audio
+  if (codecs.length === 1 && isAudioCodec(codecs[0])) {
+    type = 'audio';
+  }
+
+  // default the container to mp4
+  let container = 'mp4';
+
+  // every codec must be able to go into the container
+  // for that container to be the correct one
+  if (codecs.every((c) => mp4Regex.test(c))) {
+    container = 'mp4';
+  } else if (codecs.every((c) => webmRegex.test(c))) {
+    container = 'webm';
+  } else if (codecs.every((c) => oggRegex.test(c))) {
+    container = 'ogg';
+  }
+
+  return `${type}/${container};codecs="${codecs.join(',')}"`;
+};
+
+export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
   window.MediaSource.isTypeSupported &&
-  window.MediaSource.isTypeSupported(`video/mp4; codecs="${mapLegacyAvcCodecs(codecString)}"`) || false;
+  window.MediaSource.isTypeSupported(getMimeForCodec(codecString)) || false;
 export const isCodecSupported = (codecString) =>
   muxerSupportsCodec(codecString) && browserSupportsCodec(codecString);
 
