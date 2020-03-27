@@ -88,7 +88,7 @@ export const parseCodecs = function(codecString = '') {
   const result = {};
 
   codecs.forEach(function(codec) {
-    codec = translateLegacyCodec(codec.trim());
+    codec = codec.trim();
 
     const videoCodecMatch = videoCodecRegex.exec(codec);
     const audioCodecMatch = audioCodecRegex.exec(codec);
@@ -147,13 +147,6 @@ export const codecsFromDefault = (master, audioGroupId) => {
 
 export const isVideoCodec = (codec = '') => videoCodecRegex.test(codec.trim().toLowerCase());
 export const isAudioCodec = (codec = '') => audioCodecRegex.test(codec.trim().toLowerCase());
-export const muxerSupportsCodec = (codecString = '') => codecString.split(',').every(function(codec) {
-  codec = codec.trim().toLowerCase();
-
-  if (muxerVideoRegex.test(codec) || muxerAudioRegex.test(codec)) {
-    return true;
-  }
-});
 
 export const getMimeForCodec = (codecString) => {
   if (!codecString || typeof codecString !== 'string') {
@@ -192,9 +185,14 @@ export const getMimeForCodec = (codecString) => {
 export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
   window.MediaSource.isTypeSupported &&
   window.MediaSource.isTypeSupported(getMimeForCodec(codecString)) || false;
-export const isCodecSupported = (codecString) =>
-  muxerSupportsCodec(codecString) && browserSupportsCodec(codecString);
+
+export const muxerSupportsCodec = (codecString = '') => codecString.split(',').every(function(codec) {
+  codec = codec.trim().toLowerCase();
+
+  if (muxerVideoRegex.test(codec) || muxerAudioRegex.test(codec)) {
+    return true;
+  }
+});
 
 export const DEFAULT_AUDIO_CODEC = 'mp4a.40.2';
 export const DEFAULT_VIDEO_CODEC = 'avc1.4d400d';
-

@@ -9,7 +9,6 @@ import {
   isAudioCodec,
   muxerSupportsCodec,
   browserSupportsCodec,
-  isCodecSupported,
   getMimeForCodec
 } from '../src/codecs';
 
@@ -357,29 +356,6 @@ QUnit.test('works as expected', function(assert) {
 
   window.MediaSource = {isTypeSupported: null};
   assert.notOk(browserSupportsCodec('test'), 'no isTypeSupported, browser does not support codec');
-});
-
-QUnit.module('isCodecSupported', {
-  beforeEach() {
-    this.oldMediaSource = window.MediaSource;
-  },
-  afterEach() {
-    window.MediaSource = this.oldMediaSource;
-  }
-});
-
-QUnit.test('works as expected', function(assert) {
-  window.MediaSource = {isTypeSupported: () => true};
-  assert.ok(isCodecSupported(supportedMuxerCodecs[0]), 'browser true, muxer true, supported');
-
-  window.MediaSource = {isTypeSupported: () => false};
-  assert.notOk(isCodecSupported(supportedMuxerCodecs[0]), 'browser false, muxer true, not supported');
-
-  window.MediaSource = {isTypeSupported: () => true};
-  assert.notOk(isCodecSupported(unsupportedMuxerCodecs[0]), 'browser true, muxer false, not supported');
-
-  window.MediaSource = {isTypeSupported: () => false};
-  assert.notOk(isCodecSupported(unsupportedMuxerCodecs[0]), 'browser false, muxer false, not supported');
 });
 
 QUnit.module('getMimeForCodec');
