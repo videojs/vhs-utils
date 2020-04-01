@@ -1,14 +1,19 @@
 import window from 'global/window';
 
-const mp4Regex = RegExp('^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)');
-const webmRegex = RegExp('^(vp0?[89]|av0?1|opus|vorbis)');
-const oggRegex = RegExp('^(vp0?[89]|theora|flac|opus|vorbis)');
+const regexs = {
+  // to determine mime types
+  mp4: RegExp('^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)'),
+  webm: RegExp('^(vp0?[89]|av0?1|opus|vorbis)'),
+  ogg: RegExp('^(vp0?[89]|theora|flac|opus|vorbis)'),
 
-const videoCodecRegex = RegExp('^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)');
-const audioCodecRegex = RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)');
+  // to determine if a codec is audio or video
+  video: RegExp('^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)'),
+  audio: RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)'),
 
-const muxerVideoRegex = RegExp('^(avc0?1)');
-const muxerAudioRegex = RegExp('^(mp4a)');
+  // mux.js support regex
+  muxerVideo: RegExp('^(avc0?1)'),
+  muxerAudio: RegExp('^(mp4a)')
+};
 
 /**
  * Replace the old apple-style `avc1.<dd>.<dd>` codec string with the standard
@@ -84,28 +89,24 @@ export const mapLegacyAvcCodecs = function(codecString) {
  *         Parsed codec info
  */
 export const parseCodecs = function(codecString = '') {
-  const codecs = codecString.toLowerCase().split(',');
+  const codecs = codecString.split(',');
   const result = {};
 
   codecs.forEach(function(codec) {
     codec = codec.trim();
 
-    const videoCodecMatch = videoCodecRegex.exec(codec);
-    const audioCodecMatch = audioCodecRegex.exec(codec);
+    ['video', 'audio'].forEach(function(name) {
+      const match = regexs[name].exec(codec.toLowerCase());
 
-    if (videoCodecMatch && videoCodecMatch.length > 1) {
-      result.video = {
-        type: videoCodecMatch[1],
-        details: codec.replace(videoCodecMatch[1], '')
-      };
-    }
+      if (!match || match.length <= 1) {
+        return;
+      }
 
-    if (audioCodecMatch && audioCodecMatch.length > 1) {
-      result.audio = {
-        type: audioCodecMatch[1],
-        details: codec.replace(audioCodecMatch[1], '')
-      };
-    }
+      const type = codec.substring(0, match[1].length);
+      const details = codec.replace(type, '');
+
+      result[name] = {type, details};
+    });
   });
 
   return result;
@@ -145,8 +146,8 @@ export const codecsFromDefault = (master, audioGroupId) => {
   return null;
 };
 
-export const isVideoCodec = (codec = '') => videoCodecRegex.test(codec.trim().toLowerCase());
-export const isAudioCodec = (codec = '') => audioCodecRegex.test(codec.trim().toLowerCase());
+export const isVideoCodec = (codec = '') => regexs.video.test(codec.trim().toLowerCase());
+export const isAudioCodec = (codec = '') => regexs.audio.test(codec.trim().toLowerCase());
 
 export const getMimeForCodec = (codecString) => {
   if (!codecString || typeof codecString !== 'string') {
@@ -171,25 +172,25 @@ export const getMimeForCodec = (codecString) => {
 
   // every codec must be able to go into the container
   // for that container to be the correct one
-  if (codecs.every((c) => mp4Regex.test(c))) {
+  if (codecs.every((c) => regexs.mp4.test(c))) {
     container = 'mp4';
-  } else if (codecs.every((c) => webmRegex.test(c))) {
+  } else if (codecs.every((c) => regexs.webm.test(c))) {
     container = 'webm';
-  } else if (codecs.every((c) => oggRegex.test(c))) {
+  } else if (codecs.every((c) => regexs.ogg.test(c))) {
     container = 'ogg';
   }
 
-  return `${type}/${container};codecs="${codecs.join(',')}"`;
+  return `${type}/${container};codecs="${codecString}"`;
 };
 
 export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
   window.MediaSource.isTypeSupported &&
   window.MediaSource.isTypeSupported(getMimeForCodec(codecString)) || false;
 
-export const muxerSupportsCodec = (codecString = '') => codecString.split(',').every(function(codec) {
-  codec = codec.trim().toLowerCase();
+export const muxerSupportsCodec = (codecString = '') => codecString.toLowerCase().split(',').every(function(codec) {
+  codec = codec.trim();
 
-  if (muxerVideoRegex.test(codec) || muxerAudioRegex.test(codec)) {
+  if (regexs.muxerVideo.test(codec) || regexs.muxerAudio.test(codec)) {
     return true;
   }
 });

@@ -149,6 +149,17 @@ QUnit.test('parses video and audio codec string', function(assert) {
   );
 });
 
+QUnit.test('parses video and audio codec with mixed case', function(assert) {
+  assert.deepEqual(
+    parseCodecs('AvC1.42001E, Mp4A.40.E'),
+    {
+      video: {type: 'AvC1', details: '.42001E'},
+      audio: {type: 'Mp4A', details: '.40.E'}
+    },
+    'parsed video and audio codec string'
+  );
+});
+
 QUnit.module('codecsFromDefault');
 
 QUnit.test('returns falsey when no audio group ID', function(assert) {
@@ -382,4 +393,6 @@ QUnit.test('works as expected', function(assert) {
   assert.equal(getMimeForCodec('foo'), 'video/mp4;codecs="foo"', 'mp4 is the default');
 
   assert.notOk(getMimeForCodec(), 'invalid codec returns undefined');
+
+  assert.equal(getMimeForCodec('Mp4A.40.2,AvC1.42001E'), 'video/mp4;codecs="Mp4A.40.2,AvC1.42001E"', 'case is preserved');
 });
