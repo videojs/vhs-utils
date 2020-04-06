@@ -2,17 +2,17 @@ import window from 'global/window';
 
 const regexs = {
   // to determine mime types
-  mp4: RegExp('^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)'),
-  webm: RegExp('^(vp0?[89]|av0?1|opus|vorbis)'),
-  ogg: RegExp('^(vp0?[89]|theora|flac|opus|vorbis)'),
+  mp4: /^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)/,
+  webm: /^(vp0?[89]|av0?1|opus|vorbis)/,
+  ogg: /^(vp0?[89]|theora|flac|opus|vorbis)/,
 
   // to determine if a codec is audio or video
-  video: RegExp('^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)'),
-  audio: RegExp('^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)'),
+  video: /^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)/,
+  audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)/,
 
   // mux.js support regex
-  muxerVideo: RegExp('^(avc0?1)'),
-  muxerAudio: RegExp('^(mp4a)')
+  muxerVideo: /^(avc0?1)/,
+  muxerAudio: /^(mp4a)/
 };
 
 /**
@@ -102,6 +102,7 @@ export const parseCodecs = function(codecString = '') {
         return;
       }
 
+      // maintain codec case
       const type = codec.substring(0, match[1].length);
       const details = codec.replace(type, '');
 
