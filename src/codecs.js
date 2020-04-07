@@ -188,12 +188,10 @@ export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
   window.MediaSource.isTypeSupported &&
   window.MediaSource.isTypeSupported(getMimeForCodec(codecString)) || false;
 
-export const muxerSupportsCodec = (codecString = '') => codecString.toLowerCase().split(',').every(function(codec) {
+export const muxerSupportsCodec = (codecString = '') => codecString.toLowerCase().split(',').every((codec) => {
   codec = codec.trim();
 
-  if (regexs.muxerVideo.test(codec) || regexs.muxerAudio.test(codec)) {
-    return true;
-  }
+  return regexs.muxerVideo.test(codec) || regexs.muxerAudio.test(codec);
 });
 
 export const DEFAULT_AUDIO_CODEC = 'mp4a.40.2';

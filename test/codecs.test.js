@@ -310,7 +310,7 @@ QUnit.test('works as expected', function(assert) {
   });
 });
 
-QUnit.module('muxerSupportCodec');
+QUnit.module('muxerSupportsCodec');
 QUnit.test('works as expected', function(assert) {
   const validMuxerCodecs = [];
   const invalidMuxerCodecs = [];
@@ -326,12 +326,12 @@ QUnit.test('works as expected', function(assert) {
   supportedMuxerCodecs.forEach(function(codec, i) {
     validMuxerCodecs.push(codec);
 
-    supportedMuxerCodecs.forEach(function(subcodec, z) {
+    supportedMuxerCodecs.forEach(function(_codec, z) {
       if (z === i) {
         return;
       }
-      validMuxerCodecs.push(`${codec}, ${subcodec}`);
-      validMuxerCodecs.push(`${codec},${subcodec}`);
+      validMuxerCodecs.push(`${codec}, ${_codec}`);
+      validMuxerCodecs.push(`${codec},${_codec}`);
     });
   });
 
