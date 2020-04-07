@@ -1,3 +1,20 @@
+<a name="2.0.0"></a>
+# [2.0.0](https://github.com/videojs/stream/compare/v1.3.0...v2.0.0) (2020-04-07)
+
+### Features
+
+* **codec:** changes to handle muxer/browser/video/audio support separately (#10) ([1f92865](https://github.com/videojs/stream/commit/1f92865)), closes [#10](https://github.com/videojs/stream/issues/10)
+
+### Bug Fixes
+
+* Allow VP9 and AV1 codecs through in VHS ([b32e35b](https://github.com/videojs/stream/commit/b32e35b))
+
+
+### BREAKING CHANGES
+
+* **codec:** parseCodecs output has been changed. It now returns an object that can have an audio or video property, depending on the codecs found. Those properties are object that contain type. and details. Type being the codec name and details being codec specific information usually with a leading period.
+* **codec:** `audioProfileFromDefault` has been renamed to `codecsFromDefault` and now returns all output from `parseCodecs` not just audio or audio profile.
+
 <a name="1.3.0"></a>
 # [1.3.0](https://github.com/videojs/vhs-utils/compare/v1.2.1...v1.3.0) (2020-02-05)
 
