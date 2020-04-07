@@ -1,3 +1,20 @@
+import window from 'global/window';
+
+const regexs = {
+  // to determine mime types
+  mp4: /^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)/,
+  webm: /^(vp0?[89]|av0?1|opus|vorbis)/,
+  ogg: /^(vp0?[89]|theora|flac|opus|vorbis)/,
+
+  // to determine if a codec is audio or video
+  video: /^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)/,
+  audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)/,
+
+  // mux.js support regex
+  muxerVideo: /^(avc0?1)/,
+  muxerAudio: /^(mp4a)/
+};
+
 /**
  * Replace the old apple-style `avc1.<dd>.<dd>` codec string with the standard
  * `avc1.<hhhhhh>`
@@ -66,31 +83,32 @@ export const mapLegacyAvcCodecs = function(codecString) {
  * Parses a codec string to retrieve the number of codecs specified, the video codec and
  * object type indicator, and the audio profile.
  *
- * @param {string} [codecs]
+ * @param {string} [codecString]
  *        The codec string to parse
  * @return {ParsedCodecInfo}
  *         Parsed codec info
  */
-export const parseCodecs = function(codecs = '') {
-  const result = {
-    codecCount: 0
-  };
+export const parseCodecs = function(codecString = '') {
+  const codecs = codecString.split(',');
+  const result = {};
 
-  result.codecCount = codecs.split(',').length;
-  result.codecCount = result.codecCount || 2;
+  codecs.forEach(function(codec) {
+    codec = codec.trim();
 
-  // parse the video codec
-  const parsed = (/(^|\s|,)+(avc[13]|vp09|av01)([^ ,]*)/i).exec(codecs);
+    ['video', 'audio'].forEach(function(name) {
+      const match = regexs[name].exec(codec.toLowerCase());
 
-  if (parsed) {
-    result.videoCodec = parsed[2];
-    result.videoObjectTypeIndicator = parsed[3];
-  }
+      if (!match || match.length <= 1) {
+        return;
+      }
 
-  // parse the last field of the audio codec
-  result.audioProfile =
-    (/(^|\s|,)+mp4a.[0-9A-Fa-f]+\.([0-9A-Fa-f]+)/i).exec(codecs);
-  result.audioProfile = result.audioProfile && result.audioProfile[2];
+      // maintain codec case
+      const type = codec.substring(0, match[1].length);
+      const details = codec.replace(type, '');
+
+      result[name] = {type, details};
+    });
+  });
 
   return result;
 };
@@ -106,7 +124,7 @@ export const parseCodecs = function(codecs = '') {
  * @return {ParsedCodecInfo}
  *         Parsed codec info
  */
-export const audioProfileFromDefault = (master, audioGroupId) => {
+export const codecsFromDefault = (master, audioGroupId) => {
   if (!master.mediaGroups.AUDIO || !audioGroupId) {
     return null;
   }
@@ -122,9 +140,59 @@ export const audioProfileFromDefault = (master, audioGroupId) => {
 
     if (audioType.default && audioType.playlists) {
       // codec should be the same for all playlists within the audio type
-      return parseCodecs(audioType.playlists[0].attributes.CODECS).audioProfile;
+      return parseCodecs(audioType.playlists[0].attributes.CODECS);
     }
   }
 
   return null;
 };
+
+export const isVideoCodec = (codec = '') => regexs.video.test(codec.trim().toLowerCase());
+export const isAudioCodec = (codec = '') => regexs.audio.test(codec.trim().toLowerCase());
+
+export const getMimeForCodec = (codecString) => {
+  if (!codecString || typeof codecString !== 'string') {
+    return;
+  }
+  const codecs = codecString
+    .toLowerCase()
+    .split(',')
+    .map((c) => translateLegacyCodec(c.trim()));
+
+  // default to video type
+  let type = 'video';
+
+  // only change to audio type if the only codec we have is
+  // audio
+  if (codecs.length === 1 && isAudioCodec(codecs[0])) {
+    type = 'audio';
+  }
+
+  // default the container to mp4
+  let container = 'mp4';
+
+  // every codec must be able to go into the container
+  // for that container to be the correct one
+  if (codecs.every((c) => regexs.mp4.test(c))) {
+    container = 'mp4';
+  } else if (codecs.every((c) => regexs.webm.test(c))) {
+    container = 'webm';
+  } else if (codecs.every((c) => regexs.ogg.test(c))) {
+    container = 'ogg';
+  }
+
+  return `${type}/${container};codecs="${codecString}"`;
+};
+
+export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
+  window.MediaSource.isTypeSupported &&
+  window.MediaSource.isTypeSupported(getMimeForCodec(codecString)) || false;
+
+export const muxerSupportsCodec = (codecString = '') => codecString.toLowerCase().split(',').every((codec) => {
+  codec = codec.trim();
+
+  return regexs.muxerVideo.test(codec) || regexs.muxerAudio.test(codec);
+});
+
+export const DEFAULT_AUDIO_CODEC = 'mp4a.40.2';
+export const DEFAULT_VIDEO_CODEC = 'avc1.4d400d';
