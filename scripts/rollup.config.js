@@ -34,22 +34,6 @@ files.forEach(function(file, i) {
   // only add the last test bundle we generate as they are all the same
   if (i === (files.length - 1) && config.builds.test) {
     builds.push(config.builds.test);
-    const testNode = config.makeBuild('test', {
-      input: 'test/**/*.test.js',
-      output: [{
-        name: `${config.settings.exportName}Tests`,
-        file: 'test/dist/bundle-node.js',
-        format: 'cjs'
-      }]
-    });
-
-    testNode.output[0].globals = {};
-    testNode.external = [].concat(config.settings.externals.module).concat([
-      'qunit',
-      'sinon'
-    ]);
-
-    builds.push(testNode);
   }
 });
 
