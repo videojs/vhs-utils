@@ -45,6 +45,7 @@ export const isLikely = {
       (bytes[2] & 0xFF) === 0xDF &&
       (bytes[3] & 0xFF) === 0xA3;
   },
+
   mp4(bytes) {
     return bytes.length >= 8 &&
       (/^(f|s)typ$/).test(bytesToString(bytes.subarray(4, 8))) &&
@@ -62,10 +63,12 @@ export const isLikely = {
       (bytes.length >= 1 && bytes.length < 189 && bytes[0] === 0x47);
   },
   flac(bytes) {
-    return bytes.length >= 4 && (/^fLaC$/).test(bytesToString(bytes.subarray(0, 4)));
+    return bytes.length >= 4 &&
+      (/^fLaC$/).test(bytesToString(bytes.subarray(0, 4)));
   },
   ogg(bytes) {
-    return bytes.length >= 4 && (/^OggS$/).test(bytesToString(bytes.subarray(0, 4)));
+    return bytes.length >= 4 &&
+      (/^OggS$/).test(bytesToString(bytes.subarray(0, 4)));
   }
 };
 
@@ -92,51 +95,4 @@ export const detectContainerForBytes = (bytes) => {
   }
 
   return '';
-};
-
-export const requestAndDetectSegmentContainer = (uri, xhr, cb) => {
-  const options = {
-    responseType: 'arraybuffer',
-    uri,
-    headers: {Range: 'bytes=0-9'}
-  };
-
-  let request;
-
-  const handleResponse = (err, response) => {
-    const reqResponse = response.body || response.response;
-
-    if (err) {
-      return cb(err, request);
-    }
-
-    const bytes = toUint8(reqResponse);
-
-    // we have an id3offset, download after that ends
-    const id3Offset = getId3Offset(bytes);
-
-    // we only need 2 bytes past the id3 offset for aac/mp3 data
-    if (id3Offset) {
-      options.headers = {Range: `bytes=${id3Offset}-${id3Offset + 1}`};
-
-      request = xhr(options, handleResponse);
-      return;
-    }
-
-    const type = detectContainerForBytes(bytes);
-
-    // if we get "ts" back we need to check another single byte
-    // to verify that the content is actually ts
-    if (type === 'ts' && options.headers.Range === 'bytes=0-9') {
-      options.headers = {Range: 'bytes=188-188'};
-      request = xhr(options, handleResponse);
-      return;
-    }
-
-    return cb(null, request, type);
-  };
-
-  request = xhr(options, handleResponse);
-
-  return request;
 };

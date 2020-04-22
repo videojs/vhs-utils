@@ -43,13 +43,13 @@ QUnit.test('should function as expected', function(assert) {
   arrayNames.forEach(function(name) {
     const testObj = name === 'Array' ? testBytes : new window[name](testBytes);
 
-    assert.equal(bytesToString(testObj), testString, `testString work a string arg with ${name}`);
+    assert.equal(bytesToString(testObj), testString, `testString work as a string arg with ${name}`);
     assert.equal(bytesToString(new window[name]()), '', `empty ${name} returns empty string`);
   });
 
   assert.equal(bytesToString(), '', 'undefined returns empty string');
   assert.equal(bytesToString(null), '', 'null returns empty string');
-  assert.equal(bytesToString(stringToBytes(testString)), testString, 'string to bytes and bytes to string work');
+  assert.equal(bytesToString(stringToBytes(testString)), testString, 'stringToBytes -> bytesToString works');
 });
 
 QUnit.module('stringToBytes');
@@ -60,6 +60,7 @@ QUnit.test('should function as expected', function(assert) {
   assert.deepEqual(stringToBytes(null), [], 'empty array for null');
   assert.deepEqual(stringToBytes(''), [], 'empty array for empty string');
   assert.deepEqual(stringToBytes(10), [0x31, 0x30], 'converts numbers to strings');
+  assert.deepEqual(stringToBytes(bytesToString(testBytes)), testBytes, 'bytesToString -> stringToBytes works');
 });
 
 QUnit.module('toUint8');
@@ -72,4 +73,11 @@ QUnit.test('should function as expected', function(assert) {
   const nul = toUint8(null);
 
   assert.ok(nul instanceof Uint8Array && nul.length === 0, 'undef is a blank Uint8Array');
+
+  arrayNames.forEach(function(name) {
+    const testObj = name === 'Array' ? testBytes : new window[name](testBytes);
+    const uint = toUint8(testObj);
+
+    assert.ok(uint instanceof Uint8Array && uint.length > 0, `converted ${name} to Uint8Array`);
+  });
 });
