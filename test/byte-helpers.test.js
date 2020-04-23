@@ -39,6 +39,8 @@ const testBytes = [
   0xe7, 0xab, 0x9c
 ];
 
+const rawBytes = [0x47, 0x40, 0x00, 0x10, 0x00, 0x00, 0xb0, 0x0d, 0x00, 0x01];
+
 QUnit.test('should function as expected', function(assert) {
   arrayNames.forEach(function(name) {
     const testObj = name === 'Array' ? testBytes : new window[name](testBytes);
@@ -61,6 +63,8 @@ QUnit.test('should function as expected', function(assert) {
   assert.deepEqual(stringToBytes(''), [], 'empty array for empty string');
   assert.deepEqual(stringToBytes(10), [0x31, 0x30], 'converts numbers to strings');
   assert.deepEqual(stringToBytes(bytesToString(testBytes)), testBytes, 'bytesToString -> stringToBytes works');
+  assert.deepEqual(stringToBytes(bytesToString(rawBytes), true), rawBytes, 'equal to original with raw bytes mode');
+  assert.notDeepEqual(stringToBytes(bytesToString(rawBytes)), rawBytes, 'without raw byte mode works, not equal');
 });
 
 QUnit.module('toUint8');

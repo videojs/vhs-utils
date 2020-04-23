@@ -14,7 +14,6 @@ export const bytesToString = (bytes) => {
 
   bytes = Array.prototype.slice.call(bytes);
 
-  // TODO: when we remove ie 11 support, check if TextDecoder has better performance
   const string = String.fromCharCode.apply(null, toUint8(bytes));
 
   try {
@@ -27,17 +26,21 @@ export const bytesToString = (bytes) => {
   return string;
 };
 
-export const stringToBytes = (string) => {
+export const stringToBytes = (string, stringIsBytes = false) => {
+  const bytes = [];
+
   if (typeof string !== 'string' && string && typeof string.toString === 'function') {
     string = string.toString();
   }
 
   if (typeof string !== 'string') {
-    return [];
+    return bytes;
   }
 
-  // TODO: when we remove ie 11 support, check if TextEncoder has better performance
-  return unescape(encodeURIComponent(string))
-    .split('')
-    .map((s) => s.charCodeAt(0));
+  // If the string already is bytes, we don't have to do this
+  if (!stringIsBytes) {
+    string = unescape(encodeURIComponent(string));
+  }
+
+  return string.split('').map((s) => s.charCodeAt(0) & 0xFF);
 };
