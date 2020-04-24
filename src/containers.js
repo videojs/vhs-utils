@@ -118,7 +118,7 @@ export const detectContainerForBytes = (bytes) => {
 };
 
 // fmp4 is not a container
-export const isLikelyFmp4 = (bytes) => {
+export const isLikelyFmp4MediaSegment = (bytes) => {
   bytes = toUint8(bytes);
   let i = 0;
 

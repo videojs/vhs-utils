@@ -1,5 +1,5 @@
 import QUnit from 'qunit';
-import {detectContainerForBytes, isLikelyFmp4} from '../src/containers.js';
+import {detectContainerForBytes, isLikelyFmp4MediaSegment} from '../src/containers.js';
 import {stringToBytes} from '../src/byte-helpers.js';
 
 const fillerArray = (size) => Array.apply(null, Array(size)).map(() => 0x00);
@@ -83,6 +83,7 @@ QUnit.test('should identify known types', function(assert) {
   assert.equal(detectContainerForBytes(notTs), '', 'ts missing 0x47 at 188 is not ts at all');
   assert.equal(detectContainerForBytes(otherMp4Data), 'mp4', 'fmp4 detected as mp4');
   assert.equal(detectContainerForBytes(new Uint8Array()), '', 'no type');
+  assert.equal(detectContainerForBytes(), '', 'no type');
 });
 
 const createBox = function(type) {
@@ -96,7 +97,7 @@ const createBox = function(type) {
     .concat(fillerArray(size - 8));
 };
 
-QUnit.module('isLikelyFmp4');
+QUnit.module('isLikelyFmp4MediaSegment');
 QUnit.test('works as expected', function(assert) {
   const fmp4Data = []
     .concat(createBox('styp'))
@@ -108,9 +109,17 @@ QUnit.test('works as expected', function(assert) {
     .concat(createBox('sidx'))
     .concat(createBox('moov'));
 
-  assert.ok(isLikelyFmp4(fmp4Data), 'fmp4 is recognized as fmp4');
-  assert.notOk(isLikelyFmp4(mp4Data), 'mp4 is not recognized');
-  assert.notOk(isLikelyFmp4([].concat(id3DataWithFooter).concat(testData.mp3)), 'bad data is not recognized');
-  assert.notOk(isLikelyFmp4(new Uint8Array()), 'no errors on empty data');
-  assert.notOk(isLikelyFmp4(), 'no errors on empty data');
+  const fmp4Fake = []
+    .concat(createBox('test'))
+    .concat(createBox('moof'))
+    .concat(createBox('fooo'))
+    .concat(createBox('bar'));
+
+  assert.ok(isLikelyFmp4MediaSegment(fmp4Data), 'fmp4 is recognized as fmp4');
+  assert.ok(isLikelyFmp4MediaSegment(fmp4Fake), 'fmp4 with moof and unknown boxes is still fmp4');
+  assert.ok(isLikelyFmp4MediaSegment(createBox('moof')), 'moof alone is recognized as fmp4');
+  assert.notOk(isLikelyFmp4MediaSegment(mp4Data), 'mp4 is not recognized');
+  assert.notOk(isLikelyFmp4MediaSegment([].concat(id3DataWithFooter).concat(testData.mp3)), 'bad data is not recognized');
+  assert.notOk(isLikelyFmp4MediaSegment(new Uint8Array()), 'no errors on empty data');
+  assert.notOk(isLikelyFmp4MediaSegment(), 'no errors on empty data');
 });
