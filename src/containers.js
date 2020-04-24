@@ -59,8 +59,21 @@ export const isLikely = {
   },
 
   ts(bytes) {
-    return (bytes.length >= 189 && bytes[0] === 0x47 && bytes[188] === 0x47) ||
-      (bytes.length >= 1 && bytes.length < 189 && bytes[0] === 0x47);
+    if (bytes.length < 189 && bytes.length >= 1) {
+      return bytes[0] === 0x47;
+    }
+
+    let i = 0;
+
+    // check the first 376 bytes for two matching sync bytes
+    while (i + 188 < bytes.length && i < 188) {
+      if (bytes[i] === 0x47 && bytes[i + 188] === 0x47) {
+        return true;
+      }
+      i += 1;
+    }
+
+    return false;
   },
   flac(bytes) {
     return bytes.length >= 4 &&
@@ -72,7 +85,14 @@ export const isLikely = {
   }
 };
 
-const isLikelyTypes = Object.keys(isLikely);
+// get all the isLikely functions
+// but make sure 'ts' is at the bottom
+// as it is the least specific
+const isLikelyTypes = Object.keys(isLikely)
+  // remove ts
+  .filter((t) => t !== 'ts')
+  // add it back to the bottom
+  .concat('ts');
 
 // make sure we are dealing with uint8 data.
 isLikelyTypes.forEach(function(type) {

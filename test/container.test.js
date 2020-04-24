@@ -57,12 +57,29 @@ QUnit.test('should identify known types', function(assert) {
     assert.equal(detectContainerForBytes(dataWithId3Footer), type, `id3 + footer skipped and ${type} detected`);
   });
 
-  const notTs = [testData.ts].concat(fillerArray(188));
-  const longTs = [testData.ts]
+  const notTs = []
+    .concat(testData.ts)
+    .concat(fillerArray(188));
+  const longTs = []
+    .concat(testData.ts)
+    .concat(fillerArray(187))
+    .concat(testData.ts);
+
+  const unsyncTs = []
+    .concat(fillerArray(187))
+    .concat(testData.ts)
+    .concat(fillerArray(187))
+    .concat(testData.ts);
+
+  const badTs = []
+    .concat(fillerArray(188))
+    .concat(testData.ts)
     .concat(fillerArray(187))
     .concat(testData.ts);
 
   assert.equal(detectContainerForBytes(longTs), 'ts', 'long ts data is detected');
+  assert.equal(detectContainerForBytes(unsyncTs), 'ts', 'unsynced ts is detected');
+  assert.equal(detectContainerForBytes(badTs), '', 'ts without a sync byte in 188 bytes is not detected');
   assert.equal(detectContainerForBytes(notTs), '', 'ts missing 0x47 at 188 is not ts at all');
   assert.equal(detectContainerForBytes(otherMp4Data), 'mp4', 'fmp4 detected as mp4');
   assert.equal(detectContainerForBytes(new Uint8Array()), '', 'no type');
