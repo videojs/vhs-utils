@@ -3,7 +3,7 @@ import {bytesToString, toUint8} from './byte-helpers.js';
 export const getId3Offset = function(bytes) {
   bytes = toUint8(bytes);
 
-  if (bytesToString(bytes.subarray(0, 3)) !== 'ID3') {
+  if (bytes.length < 10 || bytesToString(bytes.subarray(0, 3)) !== 'ID3') {
     return 0;
   }
   const returnSize = (bytes[6] << 21) |
@@ -95,4 +95,27 @@ export const detectContainerForBytes = (bytes) => {
   }
 
   return '';
+};
+
+// fmp4 is not a container
+export const isLikelyFmp4 = (bytes) => {
+  bytes = toUint8(bytes);
+  let i = 0;
+
+  while (i < bytes.length) {
+    const size = (bytes[i] << 24 | bytes[i + 1] << 16 | bytes[i + 2] << 8 | bytes[i + 3]) >>> 0;
+    const type = bytesToString(bytes.subarray(i + 4, i + 8));
+
+    if (type === 'moof') {
+      return true;
+    }
+
+    if (size === 0 || (size + i) > bytes.length) {
+      i = bytes.length;
+    } else {
+      i += size;
+    }
+  }
+
+  return false;
 };
