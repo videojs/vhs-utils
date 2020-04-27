@@ -1,3 +1,10 @@
+<a name="2.1.0"></a>
+# [2.1.0](https://github.com/videojs/stream/compare/v2.0.0...v2.1.0) (2020-04-27)
+
+### Features
+
+* Add functions for byte manipulation and segment container detection (#12) ([325f677](https://github.com/videojs/stream/commit/325f677)), closes [#12](https://github.com/videojs/stream/issues/12)
+
 <a name="2.0.0"></a>
 # [2.0.0](https://github.com/videojs/stream/compare/v1.3.0...v2.0.0) (2020-04-07)
 
