@@ -38,5 +38,4 @@ files.forEach(function(file, i) {
 });
 
 // export the builds to rollup
-
 export default builds;
