@@ -44,3 +44,26 @@ export const stringToBytes = (string, stringIsBytes = false) => {
 
   return string.split('').map((s) => s.charCodeAt(0) & 0xFF);
 };
+
+export const concatTypedArrays = (...buffers) => {
+  const totalLength = buffers.reduce((total, buf) => {
+    const len = buf && (buf.byteLength || buf.length);
+
+    total += len || 0;
+
+    return total;
+  }, 0);
+
+  const tempBuffer = new Uint8Array(totalLength);
+
+  let offset = 0;
+
+  buffers.forEach(function(buf) {
+    buf = toUint8(buf);
+
+    tempBuffer.set(buf, offset);
+    offset += buf.byteLength;
+  });
+
+  return tempBuffer;
+};

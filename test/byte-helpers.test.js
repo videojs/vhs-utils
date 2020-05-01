@@ -1,5 +1,10 @@
 import QUnit from 'qunit';
-import {bytesToString, stringToBytes, toUint8} from '../src/byte-helpers.js';
+import {
+  bytesToString,
+  stringToBytes,
+  toUint8,
+  concatTypedArrays
+} from '../src/byte-helpers.js';
 import window from 'global/window';
 
 const arrayNames = [];
@@ -83,5 +88,51 @@ QUnit.test('should function as expected', function(assert) {
     const uint = toUint8(testObj);
 
     assert.ok(uint instanceof Uint8Array && uint.length > 0, `converted ${name} to Uint8Array`);
+  });
+});
+
+QUnit.module('concatTypedArrays');
+
+QUnit.test('should function as expected', function(assert) {
+  const tests = {
+    undef: {
+      data: concatTypedArrays(),
+      expected: toUint8([])
+    },
+    empty: {
+      data: concatTypedArrays(toUint8([])),
+      expected: toUint8([])
+    },
+    single: {
+      data: concatTypedArrays([0x01]),
+      expected: toUint8([0x01])
+    },
+    array: {
+      data: concatTypedArrays([0x01], [0x02]),
+      expected: toUint8([0x01, 0x02])
+    },
+    uint: {
+      data: concatTypedArrays(toUint8([0x01]), toUint8([0x02])),
+      expected: toUint8([0x01, 0x02])
+    },
+    buffer: {
+      data: concatTypedArrays(toUint8([0x01]).buffer, toUint8([0x02]).buffer),
+      expected: toUint8([0x01, 0x02])
+    },
+    manyarray: {
+      data: concatTypedArrays([0x01], [0x02], [0x03], [0x04]),
+      expected: toUint8([0x01, 0x02, 0x03, 0x04])
+    },
+    manyuint: {
+      data: concatTypedArrays(toUint8([0x01]), toUint8([0x02]), toUint8([0x03]), toUint8([0x04])),
+      expected: toUint8([0x01, 0x02, 0x03, 0x04])
+    }
+  };
+
+  Object.keys(tests).forEach(function(name) {
+    const {data, expected} = tests[name];
+
+    assert.ok(data instanceof Uint8Array, `obj is a Uint8Array for ${name}`);
+    assert.deepEqual(data, expected, `data is as expected for ${name}`);
   });
 });
