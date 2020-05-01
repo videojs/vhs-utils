@@ -1,6 +1,6 @@
 {
   "name": "@videojs/vhs-utils",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Objects and functions shared throughtout @videojs/http-streaming code",
   "generator-videojs-plugin": {
     "version": "7.7.1"

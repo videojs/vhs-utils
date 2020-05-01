@@ -1,3 +1,10 @@
+<a name="2.2.0"></a>
+# [2.2.0](https://github.com/videojs/stream/compare/v2.1.0...v2.2.0) (2020-05-01)
+
+### Features
+
+* Add a function to concat typed arrays into one Uint8Array (#13) ([e733509](https://github.com/videojs/stream/commit/e733509)), closes [#13](https://github.com/videojs/stream/issues/13)
+
 <a name="2.1.0"></a>
 # [2.1.0](https://github.com/videojs/stream/compare/v2.0.0...v2.1.0) (2020-04-27)
 
