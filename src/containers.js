@@ -139,3 +139,43 @@ export const isLikelyFmp4MediaSegment = (bytes) => {
 
   return false;
 };
+
+const parseCodecFrom = {
+  mp4(bytes) {
+    bytes = toUint8(bytes);
+    let i = 0;
+
+    while (i < bytes.length) {
+      const size = (bytes[i] << 24 | bytes[i + 1] << 16 | bytes[i + 2] << 8 | bytes[i + 3]) >>> 0;
+      const type = bytesToString(bytes.subarray(i + 4, i + 8));
+
+      if (type === 'stsd') {
+        const sampleDescriptions = bytes.subarray(8);
+        const codec = bytesToString(sampleDescriptions.subarray(4, 8));
+
+        return codec;
+
+      }
+
+      if (size === 0 || (size + i) > bytes.length) {
+        i = bytes.length;
+      } else {
+        i += size;
+      }
+    }
+  },
+  ts(bytes) {
+    // h264, aac, mp3
+  }
+};
+
+export const detectCodecsAndContainerForBytes = (bytes) => {
+  bytes = toUint8(bytes);
+
+  const container = detectContainerForBytes(bytes);
+
+  return {
+    container,
+    codecs: (container && parseCodecFrom[container]) ? parseCodecFrom[container](bytes) : ''
+  };
+};
