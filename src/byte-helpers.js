@@ -1,11 +1,36 @@
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
-export const toUint8 = (bytes) => (bytes instanceof Uint8Array) ?
-  bytes :
-  new Uint8Array(
+
+export const toUint8 = function(bytes) {
+  if (bytes instanceof Uint8Array) {
+    return bytes;
+  }
+
+  if (!Array.isArray(bytes) && !isTypedArray(bytes) && !(bytes instanceof ArrayBuffer)) {
+    bytes = [bytes];
+  }
+
+  return new Uint8Array(
     bytes && bytes.buffer || bytes,
     bytes && bytes.byteOffset || 0,
     bytes && bytes.byteLength || 0
   );
+};
+
+export const toHexString = function(bytes) {
+  bytes = toUint8(bytes);
+
+  return bytes.reduce(function(acc, b) {
+    return acc + ('00' + b.toString(16)).slice(-2);
+  }, '');
+};
+
+export const toBinaryString = function(bytes) {
+  bytes = toUint8(bytes);
+
+  return bytes.reduce(function(acc, b) {
+    return acc + ('00000000' + b.toString(2)).slice(-8);
+  }, '');
+};
 
 export const bytesToString = (bytes) => {
   if (!bytes) {
