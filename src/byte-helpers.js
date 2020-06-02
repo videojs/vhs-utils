@@ -6,7 +6,13 @@ export const toUint8 = function(bytes) {
   }
 
   if (!Array.isArray(bytes) && !isTypedArray(bytes) && !(bytes instanceof ArrayBuffer)) {
-    bytes = [bytes];
+    // any non-number or NaN leads to emtpy uint8array
+    // eslint-disable-next-line
+    if (typeof bytes !== 'number' || (typeof bytes === 'number' && bytes !== bytes)) {
+      bytes = [];
+    } else {
+      bytes = [bytes];
+    }
   }
 
   return new Uint8Array(
@@ -32,6 +38,13 @@ export const toBinaryString = function(bytes) {
   }, '');
 };
 
+export const bytesToNumber = function(bytes) {
+  return parseInt(toHexString(bytes), 16);
+};
+
+export const numberToBytes = function(number) {
+  return number.toString(16).match(/.{1,2}/g).map((v) => parseInt(v, 16));
+};
 export const bytesToString = (bytes) => {
   if (!bytes) {
     return '';
@@ -91,4 +104,31 @@ export const concatTypedArrays = (...buffers) => {
   });
 
   return tempBuffer;
+};
+
+/**
+ * Check if the bytes "b" are contained within bytes "a".
+ *
+ * @param {Uint8Array|Array} a
+ *        Bytes to check in
+ *
+ * @param {Uint8Array|Array} b
+ *        Bytes to check for
+ *
+ * @param {Object} options
+ *        options
+ *
+ * @param {Array|Uint8Array} [offset=0]
+ *        offset to use when looking at bytes in a
+ *
+ * @return {boolean}
+ *         If all bytes in b are inside of a, taking into account
+ *         bit masks.
+ */
+export const bytesMatch = (a, b, {offset = 0} = {}) => {
+  a = toUint8(a);
+  b = toUint8(b);
+
+  return b.length && a.length - offset >= b.length &&
+    b.every((bByte, i) => bByte === a[offset + i]);
 };

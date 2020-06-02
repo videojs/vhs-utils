@@ -75,13 +75,40 @@ QUnit.test('should function as expected', function(assert) {
 QUnit.module('toUint8');
 
 QUnit.test('should function as expected', function(assert) {
-  const undef = toUint8();
+  const tests = {
+    undef: {
+      data: undefined,
+      expected: new Uint8Array()
+    },
+    null: {
+      data: null,
+      expected: new Uint8Array()
+    },
+    string: {
+      data: 'foo',
+      expected: new Uint8Array()
+    },
+    NaN: {
+      data: NaN,
+      expected: new Uint8Array()
+    },
+    object: {
+      data: {},
+      expected: new Uint8Array()
+    },
+    number: {
+      data: 0x11,
+      expected: new Uint8Array([0x11])
+    }
+  };
 
-  assert.ok(undef instanceof Uint8Array && undef.length === 0, 'undef is a blank Uint8Array');
+  Object.keys(tests).forEach(function(name) {
+    const {data, expected} = tests[name];
+    const result = toUint8(data);
 
-  const nul = toUint8(null);
-
-  assert.ok(nul instanceof Uint8Array && nul.length === 0, 'undef is a blank Uint8Array');
+    assert.ok(result instanceof Uint8Array, `obj is a Uint8Array for ${name}`);
+    assert.deepEqual(result, expected, `data is as expected for ${name}`);
+  });
 
   arrayNames.forEach(function(name) {
     const testObj = name === 'Array' ? testBytes : new window[name](testBytes);
@@ -89,6 +116,7 @@ QUnit.test('should function as expected', function(assert) {
 
     assert.ok(uint instanceof Uint8Array && uint.length > 0, `converted ${name} to Uint8Array`);
   });
+
 });
 
 QUnit.module('concatTypedArrays');
