@@ -1,6 +1,7 @@
 import {bytesToString, toUint8, toHexString, bytesMatch} from './byte-helpers.js';
 import {findBox} from './mp4-helpers.js';
 import {findEbml, EBML_TAGS} from './ebml-helpers.js';
+import {findFourCC} from './riff-helpers.js';
 import {getPages} from './ogg-helpers.js';
 import {detectContainerForBytes} from './containers.js';
 // import {getId3Offset} from './id3-helpers.js';
@@ -14,7 +15,7 @@ const formatMimetype = (name, codecs) => {
     return acc;
   }, '');
 
-  return `${(codecs.video ? 'video' : 'audio')}/${name};codecs="${codecString}"`;
+  return `${(codecs.video ? 'video' : 'audio')}/${name}${codecString ? `;codecs="${codecString}"` : ''}`;
 };
 
 const parseCodecFrom = {
@@ -39,51 +40,49 @@ const parseCodecFrom = {
         return;
       }
 
-      /* eslint-disable */
+      // https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap3/qtff3.html
       const sampleDescriptions = stsd.subarray(8);
       let codec = bytesToString(sampleDescriptions.subarray(4, 8));
-      const count = (bytes[12] << 24 | bytes[13] << 16 | bytes[14] << 8 | bytes[15]) >>> 0;
       const codecBox = findBox(sampleDescriptions, [codec])[0];
-      debugger;
 
-      if ((/^[a-z]vc[1-9]$/i).test(codec)) {
-        // we don't need anything but the "config" parameter of the
-        // avc1 codecBox
+      if ((/^(avc|hvc|hev)[1-9]$/i).test(codec)) {
         const codecConfig = codecBox.subarray(78);
+        const atomType = bytesToString(codecConfig.subarray(4, 8));
+        const data = findBox(codecConfig, [atomType])[0];
 
-        if (codecConfigType === 'avcC' && codecConfig.length > 11) {
-          codec += '.';
+        // AVCDecoderConfigurationRecord
+        if (atomType === 'avcC') {
+          // in hex
+          // profile identifier + constraint flags (first 4 bits only) + level identifier
+          codec += `.${toHexString(data[1])}${toHexString(data[2] & 0xF0)}${toHexString(data[3])}`;
 
-          // left padded with zeroes for single digit hex
-          // profile idc
-          codec += toHexString(codecConfig[9]);
-          // the byte containing the constraint_set flags
-          codec += toHexString(codecConfig[10]);
-          // level idc
-          codec += toHexString(codecConfig[11]);
-        } else {
-          codec += '.4d400d';
+        // HEVCDecoderConfigurationRecord
+        } else if (atomType === 'hvcC') {
+          // in decimal
+          // Codec.Profile.Flags.TierLevel.Constraints
+          codec += `.${data[1]}.${data[5]}.L${data[12]}.${toHexString(data[6])}`;
         }
-      } else if ((/^mp4[a,v]$/i).test(codec)) {
+      } else if ((/^mp4a$/i).test(codec)) {
+        // TODO: mp3/mp2/vorbis audio is broken here
         // we do not need anything but the streamDescriptor of the mp4a codecBox
-        const codecConfig = codecBox.subarray(28);
+        // const codecConfig = codecBox.subarray(28);
         const esds = findBox(codecBox.subarray(28), ['esds'])[0];
 
         if (esds) {
-          // object type indicator usually 0x40
+          // object type indicator
           codec += '.' + toHexString(esds[17]);
           // audio object type see
           // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#MPEG-4_audio
 
-          // replace leading 0, as typically it isn't included, even
-          // though things should work if it is used.
-          codec += '.' + toHexString(esds[18] >> 3).replace(/^0/, '');
+          // first 5 bits only for audio object type
+          codec += '.' + (esds[35] >>> 3).toString();
         } else {
           codec += '.40.2';
         }
       }
       /* eslint-enable */
-      codecs[codecType] = codec;
+      // flac, ac-3, ec-3, opus
+      codecs[codecType] = codec.toLowerCase();
 
       // codec has no sub parameters
     });
@@ -99,16 +98,14 @@ const parseCodecFrom = {
     const codecs = {};
 
     pages.forEach(function(page) {
-      // Opus
       if (bytesMatch(page, [0x4F, 0x70, 0x75, 0x73], {offset: 28})) {
         codecs.audio = 'opus';
-      // theora
+      } else if (bytesMatch(page, [0x56, 0x50, 0x38, 0x30], {offset: 29})) {
+        codecs.audio = 'vp08';
       } else if (bytesMatch(page, [0x74, 0x68, 0x65, 0x6F, 0x72, 0x61], {offset: 29})) {
         codecs.video = 'theora';
-      // FLAC
       } else if (bytesMatch(page, [0x46, 0x4C, 0x41, 0x43], {offset: 29})) {
         codecs.audio = 'flac';
-      // Speex
       } else if (bytesMatch(page, [0x53, 0x70, 0x65, 0x65, 0x78], {offset: 28})) {
         codecs.audio = 'speex';
       } else if (bytesMatch(page, [0x76, 0x6F, 0x72, 0x62, 0x69, 0x73], {offset: 29})) {
@@ -119,11 +116,81 @@ const parseCodecFrom = {
     return {codecs, mimetype: formatMimetype('ogg', codecs)};
   },
   wav(bytes) {
+    // TODO: parse using riff-helper
     return {codecs: {}, mimetype: 'audio/wav'};
   },
   avi(bytes) {
-    // TODO:
-    return {codecs: {}, mimetype: 'video/avi'};
+    const strls = findFourCC(bytes, ['AVI', 'hdrl', 'strl']);
+
+    const codecs = {};
+
+    strls.forEach(function(strl) {
+      const strh = findFourCC(strl, ['strh'])[0];
+      const strf = findFourCC(strl, ['strf'])[0];
+
+      // now parse AVIStreamHeader to get codec and type:
+      // https://docs.microsoft.com/en-us/previous-versions/windows/desktop/api/avifmt/ns-avifmt-avistreamheader
+      const type = bytesToString(strh.subarray(0, 4));
+      let codec;
+      let codecType;
+
+      if (type === 'vids') {
+        // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
+        const handler = bytesToString(strh.subarray(4, 8));
+        const compression = bytesToString(strf.subarray(16, 20));
+
+        if (handler === 'H264' || compression === 'H264') {
+          codec = 'avc1.4d400d';
+        } else if (handler === 'HEVC' || compression === 'HEVC') {
+          codec = 'hevc';
+        } else if (handler === 'FMP4' || compression === 'FMP4') {
+          codec = 'm4v.20.8';
+        } else if (handler === 'VP80' || compression === 'VP80') {
+          codec = 'vp8';
+        } else if (handler === 'VP90' || compression === 'VP90') {
+          codec = 'vp9';
+        } else if (handler === 'AV01' || compression === 'AV01') {
+          codec = 'av01';
+        } else if (handler === 'theora' || compression === 'theora') {
+          codec = 'theora';
+        }
+
+        codecType = 'video';
+      } else if (type === 'auds') {
+        // https://docs.microsoft.com/en-us/windows/win32/medfound/audio-subtype-guids
+        codecType = 'audio';
+        const format = Array.prototype.slice.call(strf, 0, 2).reverse();
+        // TODO: opus, ac-3 dont have strf???
+
+        if (bytesMatch(format, [0x00, 0x55])) {
+          codec = 'mp3';
+        } else if (bytesMatch(format, [0x16, 0x00]) || bytesMatch(format, [0x00, 0xFF])) {
+          codec = 'aac';
+        } else if (bytesMatch(format, [0x70, 0x4f])) {
+          codec = 'opus';
+        } else if (bytesMatch(format, [0xF1, 0xAC])) {
+          codec = 'flac';
+        } else if (bytesMatch(format, [0x20, 0x00])) {
+          codec = 'ac-3';
+        } else if (bytesMatch(format, [0xFF, 0xFE])) {
+          codec = 'ec-3';
+        } else if (bytesMatch(format, [0x00, 0x50])) {
+          codec = 'mp2';
+        } else if (bytesMatch(format, [0x56, 0x6f])) {
+          codec = 'vorbis';
+        } else if (bytesMatch(format, [0xA1, 0x09])) {
+          codec = 'speex';
+        }
+      } else {
+        return;
+      }
+
+      if (codec) {
+        codecs[codecType] = codec;
+      }
+    });
+
+    return {codecs, mimetype: formatMimetype('avi', codecs)};
   },
 
   ts(bytes) {
@@ -170,23 +237,28 @@ const parseCodecFrom = {
           const i = payloadOffset + offset;
           const type = packet[i];
           const esLength = ((packet[i + 3] & 0x0F) << 8 | packet[i + 4]);
-          const esInfo = packet.subarray(i + 5, i + esLength);
+          // const esInfo = packet.subarray(i + 5, i + esLength);
 
           if (type === 0x1B) {
-            codecs.video = 'avc1.';
-            if (esInfo.length >= 5) {
-              codecs.video += toHexString(esInfo[2]) + toHexString(esInfo[3]) + toHexString(esInfo[4]);
-            } else {
-              codecs.video += '4d400d';
-            }
+            codecs.video = 'avc1.d400d';
+          } else if (type === 0x24) {
+            codecs.video = 'hvc1.2.4.L130.B0';
+          } else if (type === 0x10) {
+            codecs.video = 'mp4v.20.9';
           } else if (type === 0x0F) {
-            codecs.audio = 'mp4a.';
-            if (esInfo.length >= 30) {
-              codecs.audio += toHexString(esInfo[17]) + '.' + toHexString(esInfo[30]);
-            } else {
-              codecs.audio += '40.2';
-            }
+            // aac
+            codecs.audio = 'aac';
+          } else if (type === 0x81) {
+            codecs.audio = 'ac-3';
+          } else if (type === 0x87) {
+            codecs.audio = 'ec-3';
+          } else if (type === 0x03) {
+            // mp3 or mp2
+            codecs.audio = 'mpeg';
+
           }
+
+          // TODO: alac, av01, flac, opus, speex, theora, vorbis, vp08, vp09
 
           offset += esLength + 5;
         }
@@ -195,21 +267,6 @@ const parseCodecFrom = {
       startIndex += 188;
       endIndex += 188;
     }
-
-    // use pmt.table and match against
-    // https://en.wikipedia.org/wiki/Program-specific_information#Elementary_stream_types
-    Object.keys(pmt.table || {}).forEach(function(pid) {
-      const type = pmt.table[pid];
-
-      switch (type) {
-      case 0x1B:
-        codecs.video = 'avc1';
-        break;
-      case 0x0F:
-        codecs.audio = 'mp4a.40.2';
-        break;
-      }
-    });
 
     return {codecs, mimetype: formatMimetype('mp2t', codecs)};
   },
@@ -244,20 +301,36 @@ const parseCodecFrom = {
       }
 
       // TODO: parse codec parameters in CodecPrivate?
-      if ((/^V_MPEG4/).test(codec)) {
+      if ((/V_MPEG4\/ISO\/AVC/).test(codec)) {
         codec = 'avc1.4d400d';
+      } else if ((/V_MPEGH\/ISO\/HEVC/).test(codec)) {
+        codec = 'hvc1.2.4.L130.B0';
+      } else if ((/V_MPEGH\/ISO\/ASP/).test(codec)) {
+        codec = 'mp4v';
       } else if ((/^V_THEORA/).test(codec)) {
         codec = 'theora';
       } else if ((/^V_VP8/).test(codec)) {
         codec = 'vp08';
       } else if ((/^V_VP9/).test(codec)) {
         codec = 'vp09';
+      } else if ((/^V_AV1/).test(codec)) {
+        codec = 'av01';
+      } else if ((/A_ALAC/).test(codec)) {
+        codec = 'alac';
+      } else if ((/A_MPEG\/L2/).test(codec)) {
+        codec = 'mp2';
       } else if ((/A_MPEG\/L3/).test(codec)) {
         codec = 'mp3';
       } else if ((/^A_AAC/).test(codec)) {
         codec = 'mp4a';
       } else if ((/^A_AC3/).test(codec)) {
         codec = 'ac-3';
+      } else if ((/^A_PCM/).test(codec)) {
+        codec = 'pcm';
+      } else if ((/^A_MS\/ACM/).test(codec)) {
+        codec = 'speex';
+      } else if ((/^A_EAC3/).test(codec)) {
+        codec = 'ec-3';
       } else if ((/^A_VORBIS/).test(codec)) {
         codec = 'vorbis';
       } else if ((/^A_FLAC/).test(codec)) {
@@ -285,22 +358,6 @@ const parseCodecFrom = {
   }
 };
 
-/*
-AAC-LC: 'mp4a.40.2'
-HE-AACv1: 'mp4a.40.5'
-HE-AACv2: 'mp4a.40.29'
-mp3:      'mp4a.40.34'
-*/
-
-// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#AVC_profiles
-// TODO: parse h264 level/profile
-// format PPCCLL
-// First two bytes = (PP) = Profile number
-// 0x42 = 66 = 3.0 baseline
-// 0x4D = 77 = 4.0 main
-// 0x64 = 100 = 5.0 hight
-// Second two bytes = (CC) = Contraint set flags
-// Third two bytes = (LL) = level
 export const parseFormatForBytes = (bytes) => {
   bytes = toUint8(bytes);
   const result = {

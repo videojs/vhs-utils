@@ -121,14 +121,22 @@ export const concatTypedArrays = (...buffers) => {
  * @param {Array|Uint8Array} [offset=0]
  *        offset to use when looking at bytes in a
  *
+ * @param {Array|Uint8Array} [mask=[]]
+ *        mask to use on bytes before comparison.
+ *
  * @return {boolean}
  *         If all bytes in b are inside of a, taking into account
  *         bit masks.
  */
-export const bytesMatch = (a, b, {offset = 0} = {}) => {
+export const bytesMatch = (a, b, {offset = 0, mask = []} = {}) => {
   a = toUint8(a);
   b = toUint8(b);
 
-  return b.length && a.length - offset >= b.length &&
-    b.every((bByte, i) => bByte === a[offset + i]);
+  return b.length &&
+    a.length - offset >= b.length &&
+    b.every((bByte, i) => {
+      const aByte = (mask[i] ? (mask[i] & a[offset + i]) : a[offset + i]);
+
+      return bByte === aByte;
+    });
 };

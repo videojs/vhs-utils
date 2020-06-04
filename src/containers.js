@@ -6,10 +6,13 @@ import {getId3Offset} from './id3-helpers.js';
 const CONSTANTS = {
   // "webm" string literal in hex
   'webm': toUint8([0x77, 0x65, 0x62, 0x6d]),
+
   // "matroska" string literal in hex
   'matroska': toUint8([0x6d, 0x61, 0x74, 0x72, 0x6f, 0x73, 0x6b, 0x61]),
+
   // "fLaC" string literal in hex
   'flac': toUint8([0x66, 0x4c, 0x61, 0x43]),
+
   // "OggS" string literal in hex
   'ogg': toUint8([0x4f, 0x67, 0x67, 0x53]),
 
@@ -33,25 +36,20 @@ const CONSTANTS = {
 
   // "styp" string literal in hex
   'fmp4': toUint8([0x73, 0x74, 0x79, 0x70])
+
 };
 
 const _isLikely = {
   aac(bytes) {
     const offset = getId3Offset(bytes);
 
-    return bytes.length >= offset + 2 &&
-      (bytes[offset] & 0xFF) === 0xFF &&
-      (bytes[offset + 1] & 0xE0) === 0xE0 &&
-      (bytes[offset + 1] & 0x16) === 0x10;
+    return bytesMatch(bytes, [0xFF, 0x10], {offset, mask: [0xFF, 0x16]});
   },
 
   mp3(bytes) {
     const offset = getId3Offset(bytes);
 
-    return bytes.length >= offset + 2 &&
-      (bytes[offset] & 0xFF) === 0xFF &&
-      (bytes[offset + 1] & 0xE0) === 0xE0 &&
-      (bytes[offset + 1] & 0x06) === 0x02;
+    return bytesMatch(bytes, [0xFF, 0x02], {offset, mask: [0xFF, 0x06]});
   },
 
   webm(bytes) {
