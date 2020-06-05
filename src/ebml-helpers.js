@@ -19,6 +19,7 @@ export const EBML_TAGS = {
   TrackEntry: toUint8([0xAE]),
   TrackType: toUint8([0x83]),
   CodecID: toUint8([0x86]),
+  CodecPrivate: toUint8([0x63, 0xA2]),
 
   // Not used yet, but will be used for live webm/mkv
   // see https://www.matroska.org/technical/basics.html#block-structure

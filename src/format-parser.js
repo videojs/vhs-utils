@@ -1,10 +1,151 @@
 import {bytesToString, toUint8, toHexString, bytesMatch} from './byte-helpers.js';
-import {findBox} from './mp4-helpers.js';
+import {findBox, parseDescriptors} from './mp4-helpers.js';
 import {findEbml, EBML_TAGS} from './ebml-helpers.js';
 import {findFourCC} from './riff-helpers.js';
 import {getPages} from './ogg-helpers.js';
 import {detectContainerForBytes} from './containers.js';
-// import {getId3Offset} from './id3-helpers.js';
+
+const padzero = (b, count) => ('0'.repeat(count) + b.toString()).slice(-count);
+
+// VP9 Codec Feature Metadata (CodecPrivate)
+// https://www.webmproject.org/docs/container/
+const parseVp9Private = (bytes) => {
+  let i = 0;
+  const params = {};
+
+  while (i < bytes.length) {
+    const id = bytes[i] & 0x7f;
+    const len = bytes[i + 1];
+    let val;
+
+    if (len === 1) {
+      val = bytes[i + 2];
+    } else {
+      val = bytes.subarray(i + 2, i + 2 + len);
+    }
+
+    if (id === 1) {
+      params.profile = val;
+    } else if (id === 2) {
+      params.level = val;
+    } else if (id === 3) {
+      params.bitDepth = val;
+    } else if (id === 4) {
+      params.chromaSubsampling = val;
+    } else {
+      params[id] = val;
+    }
+
+    i += 2 + len;
+  }
+
+  return params;
+};
+
+// https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-syntax
+// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#AV1
+const getAv1Codec = function(bytes) {
+  let codec = '';
+  const profile = bytes[1] >>> 3;
+  const level = bytes[1] & 0x1F;
+  const tier = bytes[2] >>> 7;
+  const highBitDepth = (bytes[2] & 0x40) >> 6;
+  const twelveBit = (bytes[2] & 0x20) >> 5;
+  const monochrome = (bytes[2] & 0x10) >> 4;
+  const chromaSubsamplingX = (bytes[2] & 0x08) >> 3;
+  const chromaSubsamplingY = (bytes[2] & 0x04) >> 2;
+  const chromaSamplePosition = bytes[2] & 0x03;
+
+  codec += `${profile}.${padzero(level, 2)}`;
+
+  if (tier === 0) {
+    codec += 'M';
+  } else if (tier === 1) {
+    codec += 'H';
+  }
+
+  let bitDepth;
+
+  if (profile === 2 && highBitDepth) {
+    bitDepth = twelveBit ? 12 : 10;
+  } else {
+    bitDepth = highBitDepth ? 10 : 8;
+  }
+
+  codec += `.${padzero(bitDepth, 2)}`;
+
+  // TODO: can we parse color range??
+
+  codec += `.${monochrome}`;
+  codec += `.${chromaSubsamplingX}${chromaSubsamplingY}${chromaSamplePosition}`;
+
+  return codec;
+};
+
+const getAvcCodec = function(bytes) {
+  const profileId = toHexString(bytes[1]);
+  const constraintFlags = toHexString(bytes[2] & 0xF0);
+  const levelId = toHexString(bytes[3]);
+
+  return `${profileId}${constraintFlags}${levelId}`;
+};
+
+const getHvcCodec = function(bytes) {
+  let codec = '';
+  const profileSpace = bytes[1] >> 6;
+  const profileId = bytes[1] & 0x1F;
+  const tierFlag = (bytes[1] & 0x20) >> 5;
+  const profileCompat = bytes.subarray(2, 6);
+  const constraintIds = bytes.subarray(6, 12);
+  const levelId = bytes[12];
+
+  if (profileSpace === 1) {
+    codec += 'A';
+  } else if (profileSpace === 2) {
+    codec += 'B';
+  } else if (profileSpace === 3) {
+    codec += 'C';
+  }
+
+  codec += `${profileId}.`;
+
+  // reverse every digit of profile compat
+  const profileCompatString = profileCompat.reduce((acc, v) => {
+    if (v) {
+      acc = acc + v.toString(16)
+        .split('')
+        .reverse()
+        .join('')
+        .replace(/^0/, '');
+    }
+
+    return acc;
+  }, '');
+
+  codec += `${profileCompatString}.`;
+
+  if (tierFlag === 0) {
+    codec += 'L';
+  } else {
+    codec += 'H';
+  }
+
+  codec += levelId;
+
+  const constraints = constraintIds.reduce((acc, v) => {
+    if (v) {
+      acc += toHexString(v);
+    }
+
+    return acc;
+  }, '');
+
+  if (constraints) {
+    codec += `.${constraints}`;
+  }
+
+  return codec;
+};
 
 const formatMimetype = (name, codecs) => {
   const codecString = ['video', 'audio'].reduce((acc, type) => {
@@ -29,60 +170,76 @@ const parseCodecFrom = {
       const hdlr = findBox(mdia, ['hdlr'])[0];
       const stsd = findBox(mdia, ['minf', 'stbl', 'stsd'])[0];
 
-      const trakType = bytesToString(hdlr.subarray(8, 12));
       let codecType;
+      let codecConfigIndex;
+      const trakType = bytesToString(hdlr.subarray(8, 12));
 
       if (trakType === 'soun') {
         codecType = 'audio';
+        codecConfigIndex = 28;
       } else if (trakType === 'vide') {
         codecType = 'video';
+        codecConfigIndex = 78;
       } else {
         return;
       }
 
-      // https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap3/qtff3.html
       const sampleDescriptions = stsd.subarray(8);
       let codec = bytesToString(sampleDescriptions.subarray(4, 8));
       const codecBox = findBox(sampleDescriptions, [codec])[0];
+      const codecConfig = codecBox.subarray(codecConfigIndex);
+      const atomType = bytesToString(codecConfig.subarray(4, 8));
+      const atomData = findBox(codecConfig, [atomType])[0];
 
-      if ((/^(avc|hvc|hev)[1-9]$/i).test(codec)) {
-        const codecConfig = codecBox.subarray(78);
-        const atomType = bytesToString(codecConfig.subarray(4, 8));
-        const data = findBox(codecConfig, [atomType])[0];
-
-        // AVCDecoderConfigurationRecord
-        if (atomType === 'avcC') {
-          // in hex
-          // profile identifier + constraint flags (first 4 bits only) + level identifier
-          codec += `.${toHexString(data[1])}${toHexString(data[2] & 0xF0)}${toHexString(data[3])}`;
-
+      if (atomType === 'avcC') {
+        codec += `.${getAvcCodec(atomData)}`;
         // HEVCDecoderConfigurationRecord
-        } else if (atomType === 'hvcC') {
-          // in decimal
-          // Codec.Profile.Flags.TierLevel.Constraints
-          codec += `.${data[1]}.${data[5]}.L${data[12]}.${toHexString(data[6])}`;
-        }
-      } else if ((/^mp4a$/i).test(codec)) {
-        // TODO: mp3/mp2/vorbis audio is broken here
-        // we do not need anything but the streamDescriptor of the mp4a codecBox
-        // const codecConfig = codecBox.subarray(28);
-        const esds = findBox(codecBox.subarray(28), ['esds'])[0];
+      } else if (atomType === 'hvcC') {
+        codec += `.${getHvcCodec(atomData)}`;
+      } else if (atomType === 'esds') {
+        const esDescriptor = parseDescriptors(atomData.subarray(4))[0];
+        const decoderConfig = esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
 
-        if (esds) {
-          // object type indicator
-          codec += '.' + toHexString(esds[17]);
-          // audio object type see
-          // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/codecs_parameter#MPEG-4_audio
-
-          // first 5 bits only for audio object type
-          codec += '.' + (esds[35] >>> 3).toString();
-        } else {
-          codec += '.40.2';
+        if (decoderConfig) {
+          if (decoderConfig.oti === 0x40) {
+            codec += '.' + (decoderConfig.descriptors[0].bytes[0] >> 3).toString();
+          } else if (decoderConfig.oti === 0xdd) {
+            codec = 'vorbis';
+          } else {
+            codec += '.' + decoderConfig.oti;
+          }
         }
+      } else if (atomType === 'av1C') {
+        codec += `.${getAv1Codec(atomData)}`;
+      } else if (atomType === 'vpcC') {
+        // VPCodecConfigurationRecord
+
+        // https://www.webmproject.org/vp9/mp4/
+        const profile = bytes[0];
+        const level = bytes[1];
+        const bitDepth = bytes[2] >> 4;
+        const chromaSubsampling = (bytes[2] & 0x0F) >> 1;
+        const videoFullRangeFlag = (bytes[2] & 0x0F) >> 3;
+        const colourPrimaries = bytes[3];
+        const transferCharacteristics = bytes[4];
+        const matrixCoefficients = bytes[5];
+        // const codecIntializationDataSize = bytes[6] << 8 | bytes[5];
+        // const codecIntializationData = bytes.subarray(6, 6 + codecIntializationDataSize)
+
+        codec += `.${padzero(profile, 2)}`;
+        codec += `.${padzero(level, 2)}`;
+        codec += `.${padzero(bitDepth, 2)}`;
+        codec += `.${padzero(chromaSubsampling, 2)}`;
+        codec += `.${padzero(colourPrimaries, 2)}`;
+        codec += `.${padzero(transferCharacteristics, 2)}`;
+        codec += `.${padzero(matrixCoefficients, 2)}`;
+        codec += `.${padzero(videoFullRangeFlag, 2)}`;
+      } else {
+        codec = codec.toLowerCase();
       }
       /* eslint-enable */
       // flac, ac-3, ec-3, opus
-      codecs[codecType] = codec.toLowerCase();
+      codecs[codecType] = codec;
 
       // codec has no sub parameters
     });
@@ -90,7 +247,6 @@ const parseCodecFrom = {
     return {codecs, mimetype: formatMimetype('mp4', codecs)};
   },
   '3gp'(bytes) {
-    // TODO:
     return {codecs: {}, mimetype: 'video/3gpp'};
   },
   ogg(bytes) {
@@ -116,12 +272,28 @@ const parseCodecFrom = {
     return {codecs, mimetype: formatMimetype('ogg', codecs)};
   },
   wav(bytes) {
-    // TODO: parse using riff-helper
-    return {codecs: {}, mimetype: 'audio/wav'};
+    const format = findFourCC(bytes, ['WAVE', 'fmt'])[0];
+    const code = Array.prototype.slice.call(format, 0, 2).reverse();
+    const codecs = {};
+    let mimetype = 'audio/vnd.wave';
+
+    // TODO: should we list the actual codec from the spec?
+    // https://tools.ietf.org/html/rfc2361
+    codecs.audio = code.reduce(function(acc, v) {
+      if (v) {
+        acc += toHexString(v);
+      }
+      return acc;
+    }, '');
+
+    if (codecs.audio) {
+      mimetype += `;codec=${codecs.audio}`;
+    }
+
+    return {codecs, mimetype};
   },
   avi(bytes) {
     const strls = findFourCC(bytes, ['AVI', 'hdrl', 'strl']);
-
     const codecs = {};
 
     strls.forEach(function(strl) {
@@ -139,10 +311,11 @@ const parseCodecFrom = {
         const handler = bytesToString(strh.subarray(4, 8));
         const compression = bytesToString(strf.subarray(16, 20));
 
+        // TODO: can we parse the codec here:
         if (handler === 'H264' || compression === 'H264') {
           codec = 'avc1.4d400d';
         } else if (handler === 'HEVC' || compression === 'HEVC') {
-          codec = 'hevc';
+          codec = 'hvc1.2.4.L130.B0';
         } else if (handler === 'FMP4' || compression === 'FMP4') {
           codec = 'm4v.20.8';
         } else if (handler === 'VP80' || compression === 'VP80') {
@@ -160,7 +333,6 @@ const parseCodecFrom = {
         // https://docs.microsoft.com/en-us/windows/win32/medfound/audio-subtype-guids
         codecType = 'audio';
         const format = Array.prototype.slice.call(strf, 0, 2).reverse();
-        // TODO: opus, ac-3 dont have strf???
 
         if (bytesMatch(format, [0x00, 0x55])) {
           codec = 'mp3';
@@ -239,26 +411,23 @@ const parseCodecFrom = {
           const esLength = ((packet[i + 3] & 0x0F) << 8 | packet[i + 4]);
           // const esInfo = packet.subarray(i + 5, i + esLength);
 
+          // TODO: can we parse the codec here:
           if (type === 0x1B) {
-            codecs.video = 'avc1.d400d';
+            codecs.video = 'avc1.4d400d';
           } else if (type === 0x24) {
             codecs.video = 'hvc1.2.4.L130.B0';
           } else if (type === 0x10) {
             codecs.video = 'mp4v.20.9';
           } else if (type === 0x0F) {
-            // aac
             codecs.audio = 'aac';
           } else if (type === 0x81) {
             codecs.audio = 'ac-3';
           } else if (type === 0x87) {
             codecs.audio = 'ec-3';
           } else if (type === 0x03) {
-            // mp3 or mp2
             codecs.audio = 'mpeg';
 
           }
-
-          // TODO: alac, av01, flac, opus, speex, theora, vorbis, vp08, vp09
 
           offset += esLength + 5;
         }
@@ -288,6 +457,7 @@ const parseCodecFrom = {
     trackTags.forEach((trackTag) => {
       let codec = bytesToString(findEbml(trackTag, [EBML_TAGS.CodecID])[0]);
       const trackType = findEbml(trackTag, [EBML_TAGS.TrackType])[0][0];
+      const codecPrivate = findEbml(trackTag, [EBML_TAGS.CodecPrivate])[0];
       let codecType;
 
       // 1 is video, 2 is audio,
@@ -300,21 +470,49 @@ const parseCodecFrom = {
         return;
       }
 
-      // TODO: parse codec parameters in CodecPrivate?
+      // TODO: VP09/VP09 codec parsing
       if ((/V_MPEG4\/ISO\/AVC/).test(codec)) {
-        codec = 'avc1.4d400d';
+        codec = `avc1.${getAvcCodec(codecPrivate)}`;
       } else if ((/V_MPEGH\/ISO\/HEVC/).test(codec)) {
-        codec = 'hvc1.2.4.L130.B0';
+        codec = `hvc1.${getHvcCodec(codecPrivate)}`;
       } else if ((/V_MPEGH\/ISO\/ASP/).test(codec)) {
         codec = 'mp4v';
       } else if ((/^V_THEORA/).test(codec)) {
         codec = 'theora';
       } else if ((/^V_VP8/).test(codec)) {
-        codec = 'vp08';
+        codec = 'vp8';
       } else if ((/^V_VP9/).test(codec)) {
-        codec = 'vp09';
+        if (codecPrivate) {
+          const {profile, level, bitDepth, chromaSubsampling} = parseVp9Private(codecPrivate);
+
+          codec = 'vp09.';
+          codec += `${padzero(profile, 2)}.`;
+          codec += `${padzero(level, 2)}.`;
+          codec += `${padzero(bitDepth, 2)}.`;
+          codec += `${padzero(chromaSubsampling, 2)}`;
+
+          // Video -> Colour -> Ebml name
+          const matrixCoefficients = findEbml(trackTag, [0xE0, [0x55, 0xB0], [0x55, 0xB1]])[0] || [];
+          const videoFullRangeFlag = findEbml(trackTag, [0xE0, [0x55, 0xB0], [0x55, 0xB9]])[0] || [];
+          const transferCharacteristics = findEbml(trackTag, [0xE0, [0x55, 0xB0], [0x55, 0xBA]])[0] || [];
+          const colourPrimaries = findEbml(trackTag, [0xE0, [0x55, 0xB0], [0x55, 0xBB]])[0] || [];
+
+          // if we find any optional codec parameter specify them all.
+          if (matrixCoefficients.length ||
+            videoFullRangeFlag.length ||
+            transferCharacteristics.length ||
+            colourPrimaries.length) {
+            codec += `.${padzero(colourPrimaries[0], 2)}`;
+            codec += `.${padzero(transferCharacteristics[0], 2)}`;
+            codec += `.${padzero(matrixCoefficients[0], 2)}`;
+            codec += `.${padzero(videoFullRangeFlag[0], 2)}`;
+          }
+
+        } else {
+          codec = 'vp9';
+        }
       } else if ((/^V_AV1/).test(codec)) {
-        codec = 'av01';
+        codec = `av01.${getAv1Codec(codecPrivate)}`;
       } else if ((/A_ALAC/).test(codec)) {
         codec = 'alac';
       } else if ((/A_MPEG\/L2/).test(codec)) {
