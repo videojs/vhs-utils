@@ -1,11 +1,41 @@
-import {bytesToString, toUint8, toHexString, bytesMatch} from './byte-helpers.js';
-import {findBox, parseDescriptors} from './mp4-helpers.js';
+import {bytesToString, toUint8, toHexString, toBinaryString, bytesMatch} from './byte-helpers.js';
+import {findBox, parseDescriptors, findNamedBox} from './mp4-helpers.js';
 import {findEbml, EBML_TAGS} from './ebml-helpers.js';
 import {findFourCC} from './riff-helpers.js';
 import {getPages} from './ogg-helpers.js';
 import {detectContainerForBytes} from './containers.js';
 
 const padzero = (b, count) => ('0'.repeat(count) + b.toString()).slice(-count);
+
+// https://docs.microsoft.com/en-us/windows/win32/medfound/audio-subtype-guids
+// https://tools.ietf.org/html/rfc2361
+const wFormatTagCodec = function(wFormatTag) {
+  wFormatTag = toUint8(wFormatTag);
+
+  if (bytesMatch(wFormatTag, [0x00, 0x55])) {
+    return 'mp3';
+  } else if (bytesMatch(wFormatTag, [0x16, 0x00]) || bytesMatch(wFormatTag, [0x00, 0xFF])) {
+    return 'aac';
+  } else if (bytesMatch(wFormatTag, [0x70, 0x4f])) {
+    return 'opus';
+  } else if (bytesMatch(wFormatTag, [0x6C, 0x61])) {
+    return 'alac';
+  } else if (bytesMatch(wFormatTag, [0xF1, 0xAC])) {
+    return 'flac';
+  } else if (bytesMatch(wFormatTag, [0x20, 0x00])) {
+    return 'ac-3';
+  } else if (bytesMatch(wFormatTag, [0xFF, 0xFE])) {
+    return 'ec-3';
+  } else if (bytesMatch(wFormatTag, [0x00, 0x50])) {
+    return 'mp2';
+  } else if (bytesMatch(wFormatTag, [0x56, 0x6f])) {
+    return 'vorbis';
+  } else if (bytesMatch(wFormatTag, [0xA1, 0x09])) {
+    return 'speex';
+  }
+
+  return '';
+};
 
 // VP9 Codec Feature Metadata (CodecPrivate)
 // https://www.webmproject.org/docs/container/
@@ -75,7 +105,6 @@ const getAv1Codec = function(bytes) {
   codec += `.${padzero(bitDepth, 2)}`;
 
   // TODO: can we parse color range??
-
   codec += `.${monochrome}`;
   codec += `.${chromaSubsamplingX}${chromaSubsamplingY}${chromaSamplePosition}`;
 
@@ -109,20 +138,15 @@ const getHvcCodec = function(bytes) {
 
   codec += `${profileId}.`;
 
-  // reverse every digit of profile compat
-  const profileCompatString = profileCompat.reduce((acc, v) => {
-    if (v) {
-      acc = acc + v.toString(16)
-        .split('')
-        .reverse()
-        .join('')
-        .replace(/^0/, '');
-    }
+  // ffmpeg does this in big endian
+  let profileCompatVal = parseInt(toBinaryString(profileCompat).split('').reverse().join(''), 2);
 
-    return acc;
-  }, '');
+  // apple does this in little endian...
+  if (profileCompatVal > 255) {
+    profileCompatVal = parseInt(toBinaryString(profileCompat), 2);
+  }
 
-  codec += `${profileCompatString}.`;
+  codec += `${profileCompatVal.toString(16)}.`;
 
   if (tierFlag === 0) {
     codec += 'L';
@@ -134,7 +158,10 @@ const getHvcCodec = function(bytes) {
 
   const constraints = constraintIds.reduce((acc, v) => {
     if (v) {
-      acc += toHexString(v);
+      if (acc) {
+        acc += '.';
+      }
+      acc += v.toString(16);
     }
 
     return acc;
@@ -160,6 +187,16 @@ const formatMimetype = (name, codecs) => {
 };
 
 const parseCodecFrom = {
+  mov(bytes) {
+    // mov and mp4 both use a nearly identical box structure.
+    const retval = parseCodecFrom.mp4(bytes);
+
+    if (retval.mimetype) {
+      retval.mimetype = retval.mimetype.replace('mp4', 'quicktime');
+    }
+
+    return retval;
+  },
   mp4(bytes) {
     bytes = toUint8(bytes);
     const codecs = {};
@@ -171,15 +208,12 @@ const parseCodecFrom = {
       const stsd = findBox(mdia, ['minf', 'stbl', 'stsd'])[0];
 
       let codecType;
-      let codecConfigIndex;
       const trakType = bytesToString(hdlr.subarray(8, 12));
 
       if (trakType === 'soun') {
         codecType = 'audio';
-        codecConfigIndex = 28;
       } else if (trakType === 'vide') {
         codecType = 'video';
-        codecConfigIndex = 78;
       } else {
         return;
       }
@@ -187,44 +221,44 @@ const parseCodecFrom = {
       const sampleDescriptions = stsd.subarray(8);
       let codec = bytesToString(sampleDescriptions.subarray(4, 8));
       const codecBox = findBox(sampleDescriptions, [codec])[0];
-      const codecConfig = codecBox.subarray(codecConfigIndex);
-      const atomType = bytesToString(codecConfig.subarray(4, 8));
-      const atomData = findBox(codecConfig, [atomType])[0];
 
-      if (atomType === 'avcC') {
-        codec += `.${getAvcCodec(atomData)}`;
+      if (codec === 'avc1') {
+        // AVCDecoderConfigurationRecord
+        codec += `.${getAvcCodec(findNamedBox(codecBox, 'avcC'))}`;
         // HEVCDecoderConfigurationRecord
-      } else if (atomType === 'hvcC') {
-        codec += `.${getHvcCodec(atomData)}`;
-      } else if (atomType === 'esds') {
-        const esDescriptor = parseDescriptors(atomData.subarray(4))[0];
+      } else if (codec === 'hvc1' || codec === 'hev1') {
+        codec += `.${getHvcCodec(findNamedBox(codecBox, 'hvcC'))}`;
+      } else if (codec === 'mp4a' || codec === 'mp4v') {
+        const esds = findNamedBox(codecBox, 'esds');
+        const esDescriptor = parseDescriptors(esds.subarray(4))[0];
         const decoderConfig = esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
 
         if (decoderConfig) {
+          codec += '.' + toHexString(decoderConfig.oti);
           if (decoderConfig.oti === 0x40) {
             codec += '.' + (decoderConfig.descriptors[0].bytes[0] >> 3).toString();
+          } else if (decoderConfig.oti === 0x20) {
+            codec += '.' + (decoderConfig.descriptors[0].bytes[4]).toString();
           } else if (decoderConfig.oti === 0xdd) {
             codec = 'vorbis';
-          } else {
-            codec += '.' + decoderConfig.oti;
           }
         }
-      } else if (atomType === 'av1C') {
-        codec += `.${getAv1Codec(atomData)}`;
-      } else if (atomType === 'vpcC') {
+      } else if (codec === 'av01') {
+        // AV1DecoderConfigurationRecord
+        codec += `.${getAv1Codec(findNamedBox(codecBox, 'av1C'))}`;
+      } else if (codec === 'vp09') {
         // VPCodecConfigurationRecord
+        const vpcC = findNamedBox(codecBox, 'vpcC');
 
         // https://www.webmproject.org/vp9/mp4/
-        const profile = bytes[0];
-        const level = bytes[1];
-        const bitDepth = bytes[2] >> 4;
-        const chromaSubsampling = (bytes[2] & 0x0F) >> 1;
-        const videoFullRangeFlag = (bytes[2] & 0x0F) >> 3;
-        const colourPrimaries = bytes[3];
-        const transferCharacteristics = bytes[4];
-        const matrixCoefficients = bytes[5];
-        // const codecIntializationDataSize = bytes[6] << 8 | bytes[5];
-        // const codecIntializationData = bytes.subarray(6, 6 + codecIntializationDataSize)
+        const profile = vpcC[0];
+        const level = vpcC[1];
+        const bitDepth = vpcC[2] >> 4;
+        const chromaSubsampling = (vpcC[2] & 0x0F) >> 1;
+        const videoFullRangeFlag = (vpcC[2] & 0x0F) >> 3;
+        const colourPrimaries = vpcC[3];
+        const transferCharacteristics = vpcC[4];
+        const matrixCoefficients = vpcC[5];
 
         codec += `.${padzero(profile, 2)}`;
         codec += `.${padzero(level, 2)}`;
@@ -234,6 +268,14 @@ const parseCodecFrom = {
         codec += `.${padzero(transferCharacteristics, 2)}`;
         codec += `.${padzero(matrixCoefficients, 2)}`;
         codec += `.${padzero(videoFullRangeFlag, 2)}`;
+      } else if (codec === 'theo') {
+        codec = 'theora';
+      } else if (codec === 'spex') {
+        codec = 'speex';
+      } else if (codec === '.mp3') {
+        codec = 'mp4a.40.34';
+      } else if (codec === 'msVo') {
+        codec = 'vorbis';
       } else {
         codec = codec.toLowerCase();
       }
@@ -257,7 +299,7 @@ const parseCodecFrom = {
       if (bytesMatch(page, [0x4F, 0x70, 0x75, 0x73], {offset: 28})) {
         codecs.audio = 'opus';
       } else if (bytesMatch(page, [0x56, 0x50, 0x38, 0x30], {offset: 29})) {
-        codecs.audio = 'vp08';
+        codecs.audio = 'vp8';
       } else if (bytesMatch(page, [0x74, 0x68, 0x65, 0x6F, 0x72, 0x61], {offset: 29})) {
         codecs.video = 'theora';
       } else if (bytesMatch(page, [0x46, 0x4C, 0x41, 0x43], {offset: 29})) {
@@ -273,21 +315,25 @@ const parseCodecFrom = {
   },
   wav(bytes) {
     const format = findFourCC(bytes, ['WAVE', 'fmt'])[0];
-    const code = Array.prototype.slice.call(format, 0, 2).reverse();
-    const codecs = {};
+    const wFormatTag = Array.prototype.slice.call(format, 0, 2).reverse();
     let mimetype = 'audio/vnd.wave';
+    const codecs = {
+      audio: wFormatTagCodec(wFormatTag)
+    };
 
-    // TODO: should we list the actual codec from the spec?
-    // https://tools.ietf.org/html/rfc2361
-    codecs.audio = code.reduce(function(acc, v) {
+    const codecString = wFormatTag.reduce(function(acc, v) {
       if (v) {
         acc += toHexString(v);
       }
       return acc;
     }, '');
 
-    if (codecs.audio) {
-      mimetype += `;codec=${codecs.audio}`;
+    if (codecString) {
+      mimetype += `;codec=${codecString}`;
+    }
+
+    if (codecString && !codecs.audio) {
+      codecs.audio = codecString;
     }
 
     return {codecs, mimetype};
@@ -311,48 +357,32 @@ const parseCodecFrom = {
         const handler = bytesToString(strh.subarray(4, 8));
         const compression = bytesToString(strf.subarray(16, 20));
 
-        // TODO: can we parse the codec here:
+        // TODO: can we parse the codec parameters here:
         if (handler === 'H264' || compression === 'H264') {
-          codec = 'avc1.4d400d';
+          codec = 'avc1';
         } else if (handler === 'HEVC' || compression === 'HEVC') {
-          codec = 'hvc1.2.4.L130.B0';
+          codec = 'hev1';
         } else if (handler === 'FMP4' || compression === 'FMP4') {
-          codec = 'm4v.20.8';
+          codec = 'mp4v.20';
         } else if (handler === 'VP80' || compression === 'VP80') {
           codec = 'vp8';
         } else if (handler === 'VP90' || compression === 'VP90') {
           codec = 'vp9';
         } else if (handler === 'AV01' || compression === 'AV01') {
           codec = 'av01';
-        } else if (handler === 'theora' || compression === 'theora') {
+        } else if (handler === 'theo' || compression === 'theora') {
           codec = 'theora';
+        } else {
+          codec = handler || compression;
         }
 
         codecType = 'video';
       } else if (type === 'auds') {
-        // https://docs.microsoft.com/en-us/windows/win32/medfound/audio-subtype-guids
         codecType = 'audio';
-        const format = Array.prototype.slice.call(strf, 0, 2).reverse();
+        const wFormatTag = Array.prototype.slice.call(strf, 0, 2).reverse();
 
-        if (bytesMatch(format, [0x00, 0x55])) {
-          codec = 'mp3';
-        } else if (bytesMatch(format, [0x16, 0x00]) || bytesMatch(format, [0x00, 0xFF])) {
-          codec = 'aac';
-        } else if (bytesMatch(format, [0x70, 0x4f])) {
-          codec = 'opus';
-        } else if (bytesMatch(format, [0xF1, 0xAC])) {
-          codec = 'flac';
-        } else if (bytesMatch(format, [0x20, 0x00])) {
-          codec = 'ac-3';
-        } else if (bytesMatch(format, [0xFF, 0xFE])) {
-          codec = 'ec-3';
-        } else if (bytesMatch(format, [0x00, 0x50])) {
-          codec = 'mp2';
-        } else if (bytesMatch(format, [0x56, 0x6f])) {
-          codec = 'vorbis';
-        } else if (bytesMatch(format, [0xA1, 0x09])) {
-          codec = 'speex';
-        }
+        codecs.audio = wFormatTagCodec(wFormatTag);
+
       } else {
         return;
       }
@@ -408,24 +438,26 @@ const parseCodecFrom = {
           // add an entry that maps the elementary_pid to the stream_type
           const i = payloadOffset + offset;
           const type = packet[i];
-          const esLength = ((packet[i + 3] & 0x0F) << 8 | packet[i + 4]);
-          // const esInfo = packet.subarray(i + 5, i + esLength);
+          const esLength = ((packet[i + 3] & 0x0f) << 8 | (packet[i + 4]));
+          const esInfo = packet.subarray(i + 5, i + 5 + esLength);
 
-          // TODO: can we parse the codec here:
-          if (type === 0x1B) {
-            codecs.video = 'avc1.4d400d';
+          // TODO: can we parse other the codec parameters here:
+          if (type === 0x06 && bytesMatch(esInfo, [0x4F, 0x70, 0x75, 0x73], {offset: 2})) {
+            codecs.audio = 'opus';
+          } else if (type === 0x1B || type === 0x20) {
+            codecs.video = 'avc1';
           } else if (type === 0x24) {
-            codecs.video = 'hvc1.2.4.L130.B0';
+            codecs.video = 'hev1';
           } else if (type === 0x10) {
-            codecs.video = 'mp4v.20.9';
+            codecs.video = 'mp4v.20';
           } else if (type === 0x0F) {
             codecs.audio = 'aac';
           } else if (type === 0x81) {
             codecs.audio = 'ac-3';
           } else if (type === 0x87) {
             codecs.audio = 'ec-3';
-          } else if (type === 0x03) {
-            codecs.audio = 'mpeg';
+          } else if (type === 0x03 || type === 0x04) {
+            codecs.audio = 'mp3';
 
           }
 
@@ -470,13 +502,16 @@ const parseCodecFrom = {
         return;
       }
 
-      // TODO: VP09/VP09 codec parsing
       if ((/V_MPEG4\/ISO\/AVC/).test(codec)) {
         codec = `avc1.${getAvcCodec(codecPrivate)}`;
       } else if ((/V_MPEGH\/ISO\/HEVC/).test(codec)) {
-        codec = `hvc1.${getHvcCodec(codecPrivate)}`;
-      } else if ((/V_MPEGH\/ISO\/ASP/).test(codec)) {
-        codec = 'mp4v';
+        codec = `hev1.${getHvcCodec(codecPrivate)}`;
+      } else if ((/V_MPEG4\/ISO\/ASP/).test(codec)) {
+        if (codecPrivate) {
+          codec = 'mp4v.20.' + codecPrivate[4].toString();
+        } else {
+          codec = 'mp4v.20.9';
+        }
       } else if ((/^V_THEORA/).test(codec)) {
         codec = 'theora';
       } else if ((/^V_VP8/).test(codec)) {
@@ -520,7 +555,11 @@ const parseCodecFrom = {
       } else if ((/A_MPEG\/L3/).test(codec)) {
         codec = 'mp3';
       } else if ((/^A_AAC/).test(codec)) {
-        codec = 'mp4a';
+        if (codecPrivate) {
+          codec = 'mp4a.40.' + (codecPrivate[0] >>> 3).toString();
+        } else {
+          codec = 'mp4a.40.2';
+        }
       } else if ((/^A_AC3/).test(codec)) {
         codec = 'ac-3';
       } else if ((/^A_PCM/).test(codec)) {
@@ -546,10 +585,10 @@ const parseCodecFrom = {
     return {codecs: {audio: 'aac'}, mimetype: 'audio/aac'};
   },
   ac3(bytes) {
-    return {codecs: {audio: 'ac3'}, mimetype: 'audio/vnd.dolby.dd-raw'};
+    return {codecs: {audio: 'ac-3'}, mimetype: 'audio/vnd.dolby.dd-raw'};
   },
   mp3(bytes) {
-    return {codecs: {audio: 'mpeg'}, mimetype: 'audio/mpeg'};
+    return {codecs: {audio: 'mp3'}, mimetype: 'audio/mpeg'};
   },
   flac(bytes) {
     return {codecs: {audio: 'flac'}, mimetype: 'audio/flac'};

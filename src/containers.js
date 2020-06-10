@@ -35,7 +35,10 @@ const CONSTANTS = {
   'mp4': toUint8([0x66, 0x74, 0x79, 0x70]),
 
   // "styp" string literal in hex
-  'fmp4': toUint8([0x73, 0x74, 0x79, 0x70])
+  'fmp4': toUint8([0x73, 0x74, 0x79, 0x70]),
+
+  // "ftyp" string literal in hex
+  'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74])
 
 };
 
@@ -67,9 +70,12 @@ const _isLikely = {
   },
 
   mp4(bytes) {
-    return !_isLikely['3gp'](bytes) &&
+    return !_isLikely['3gp'](bytes) && !_isLikely.mov(bytes) &&
       (bytesMatch(bytes, CONSTANTS.mp4, {offset: 4}) ||
        bytesMatch(bytes, CONSTANTS.fmp4, {offset: 4}));
+  },
+  mov(bytes) {
+    return bytesMatch(bytes, CONSTANTS.mov, {offset: 4});
   },
   '3gp'(bytes) {
     return bytesMatch(bytes, CONSTANTS['3gp'], {offset: 4});

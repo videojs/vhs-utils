@@ -166,3 +166,29 @@ export const findBox = function(bytes, paths) {
   // we've finished searching all of bytes
   return results;
 };
+
+export const findNamedBox = function(bytes, path) {
+  path = normalizePath(path);
+
+  if (!path.length) {
+    // short-circuit the search for empty paths
+    return [];
+  }
+
+  let i = 0;
+
+  while (i < bytes.length) {
+    if (bytesMatch(bytes.subarray(i, i + path.length), path)) {
+      const size = (bytes[i - 4] << 24 | bytes[i - 3] << 16 | bytes[i - 2] << 8 | bytes[i - 1]) >>> 0;
+      const end = size > 1 ? i + size : bytes.byteLength;
+
+      return bytes.subarray(i + 4, end);
+    }
+
+    i++;
+  }
+
+  // we've finished searching all of bytes
+  return [];
+
+};
