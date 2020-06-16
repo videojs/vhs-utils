@@ -5,6 +5,7 @@ import {findFourCC} from './riff-helpers.js';
 import {getPages} from './ogg-helpers.js';
 import {detectContainerForBytes} from './containers.js';
 import {findH264Nal, findH265Nal} from './nal-helpers.js';
+import {parseTs} from './m2ts-helpers.js';
 
 const padzero = (b, count) => ('0'.repeat(count) + b.toString()).slice(-count);
 
@@ -427,94 +428,20 @@ const parseCodecFrom = {
   },
 
   ts(bytes) {
-    let startIndex = 0;
-    let endIndex = 188;
-    const SYNC_BYTE = 0x47;
-    const pmt = {};
+    const result = parseTs(bytes, 2);
     const codecs = {};
 
-    while (endIndex < bytes.byteLength) {
-      if (bytes[startIndex] !== SYNC_BYTE && bytes[endIndex] !== SYNC_BYTE) {
-        endIndex += 1;
-        startIndex += 1;
-        continue;
-      }
-      const packet = bytes.subarray(startIndex, endIndex);
-      const pid = (((packet[1] & 0x1f) << 8) | packet[2]);
-      const hasPusi = !!(packet[1] & 0x40);
-      const hasAdaptationHeader = (((packet[3] & 0x30) >>> 4) > 0x01);
-      let payloadOffset = 4 + (hasAdaptationHeader ? (packet[4] + 1) : 0);
+    Object.keys(result.streams).forEach(function(esPid) {
+      const stream = result.streams[esPid];
 
-      if (hasPusi) {
-        payloadOffset += packet[payloadOffset] + 1;
+      if (stream.codec === 'avc1' && stream.packets.length) {
+        stream.codec = parseCodecFrom.h264(stream.packets[0]).codecs.video;
+      } else if (stream.codec === 'hev1' && stream.packets.length) {
+        stream.codec = parseCodecFrom.h265(stream.packets[0]).codecs.video;
       }
 
-      if (pid === 0 && !pmt.pid) {
-        pmt.pid = (packet[payloadOffset + 10] & 0x1f) << 8 | packet[payloadOffset + 11];
-      } else if (pmt.pid && pid === pmt.pid && !pmt.table) {
-        const isNotForward = packet[payloadOffset + 5] & 0x01;
-
-        // ignore forward pmt delarations
-        if (!isNotForward) {
-          continue;
-        }
-        pmt.table = {};
-        pmt.typePids = {};
-
-        const sectionLength = (packet[payloadOffset + 1] & 0x0f) << 8 | packet[payloadOffset + 2];
-        const tableEnd = 3 + sectionLength - 4;
-        const programInfoLength = (packet[payloadOffset + 10] & 0x0f) << 8 | packet[payloadOffset + 11];
-        let offset = 12 + programInfoLength;
-
-        while (offset < tableEnd) {
-          // add an entry that maps the elementary_pid to the stream_type
-          const i = payloadOffset + offset;
-          const type = packet[i];
-          const esPid = (packet[i + 1] & 0x1F) << 8 | packet[i + 2];
-          const esLength = ((packet[i + 3] & 0x0f) << 8 | (packet[i + 4]));
-          const esInfo = packet.subarray(i + 5, i + 5 + esLength);
-
-          pmt.table[esPid] = type;
-          pmt.typePids[type] = esPid;
-
-          if (type === 0x06 && bytesMatch(esInfo, [0x4F, 0x70, 0x75, 0x73], {offset: 2})) {
-            codecs.audio = 'opus';
-          } else if (type === 0x1B || type === 0x20) {
-            codecs.video = 'avc1';
-          } else if (type === 0x24) {
-            codecs.video = 'hev1';
-          } else if (type === 0x10) {
-            codecs.video = 'mp4v.20';
-          } else if (type === 0x0F) {
-            codecs.audio = 'aac';
-          } else if (type === 0x81) {
-            codecs.audio = 'ac-3';
-          } else if (type === 0x87) {
-            codecs.audio = 'ec-3';
-          } else if (type === 0x03 || type === 0x04) {
-            codecs.audio = 'mp3';
-          }
-
-          offset += esLength + 5;
-        }
-
-        // we can only parse further for avc1 and hev1
-        if (codecs.video !== 'hev1' && codecs.video !== 'avc1') {
-          break;
-        }
-      } else if (pmt.pid && pmt.table) {
-        if (codecs.video === 'hev1' && pmt.typePids[0x24] === pid) {
-          codecs.video = parseCodecFrom.h265(packet).codecs.video;
-          break;
-        } else if (codecs.video === 'avc1' && (pmt.typePids[0x1B] === pid || pmt.typePids[0x20] === pid)) {
-          codecs.video = parseCodecFrom.h264(packet).codecs.video;
-          break;
-        }
-      }
-
-      startIndex += 188;
-      endIndex += 188;
-    }
+      codecs[stream.type] = stream.codec;
+    });
 
     return {codecs, mimetype: formatMimetype('mp2t', codecs)};
   },
