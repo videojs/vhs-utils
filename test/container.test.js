@@ -33,10 +33,44 @@ const testData = {
   'mp3': [0xFF, 0xFB],
   '3gp': [0x00, 0x00, 0x00, 0x00].concat(stringToBytes('ftyp3g')),
   'mp4': [0x00, 0x00, 0x00, 0x00].concat(stringToBytes('ftypiso')),
+  'mov': [0x00, 0x00, 0x00, 0x00].concat(stringToBytes('ftypqt')),
   'avi': [0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x41, 0x56, 0x49],
   'wav': [0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45],
-  'ts': [0x47]
+  'ts': [0x47],
+  // seq_parameter_set_rbsp
+  'h264': [0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xc0, 0x0d, 0xd9, 0x01, 0xa1, 0xfa, 0x10, 0x00, 0x00, 0x03, 0x20, 0x00, 0x00, 0x95, 0xe0, 0xf1, 0x42, 0xa4, 0x80, 0x00, 0x00, 0x00, 0x01],
+  // video_parameter_set_rbsp
+  'h265': [0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x24, 0x08, 0x00, 0x00, 0x00, 0x9c, 0x08, 0x00, 0x00, 0x00, 0x00, 0x78, 0x95, 0x98, 0x09, 0x00, 0x00, 0x00, 0x01]
 };
+
+// seq_parameter_set_rbsp
+const h265seq = [
+  0x00, 0x00, 0x00, 0x01,
+  0x42, 0x01, 0x01, 0x21,
+  0x60, 0x00, 0x00, 0x00,
+  0x90, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x78, 0xa0,
+  0x0d, 0x08, 0x0f, 0x16,
+  0x59, 0x59, 0xa4, 0x93,
+  0x2b, 0x9a, 0x02, 0x00,
+  0x00, 0x00, 0x64, 0x00,
+  0x00, 0x09, 0x5e, 0x10,
+  0x00, 0x00, 0x00, 0x01
+];
+
+const h264shortnal = testData.h264.slice();
+
+// remove 0x00 from the front
+h264shortnal.splice(0, 1);
+// remove 0x00 from the back
+h264shortnal.splice(h264shortnal.length - 2, 1);
+
+const h265shortnal = testData.h265.slice();
+
+// remove 0x00 from the front
+h265shortnal.splice(0, 1);
+// remove 0x00 from the back
+h265shortnal.splice(h265shortnal.length - 2, 1);
 
 QUnit.module('detectContainerForBytes');
 
@@ -53,9 +87,9 @@ QUnit.test('should identify known types', function(assert) {
 
   assert.equal(detectContainerForBytes(mp4Bytes), 'mp4', 'styp mp4 detected as mp4');
 
-  // mp3 and aac audio can have id3 data before the
+  // mp3/aac/flac audio can have id3 data before the
   // signature for the file, so we need to handle that.
-  ['mp3', 'aac'].forEach(function(type) {
+  ['mp3', 'aac', 'flac'].forEach(function(type) {
     const dataWithId3 = new Uint8Array([].concat(id3Data).concat(testData[type]));
     const dataWithId3Footer = new Uint8Array([].concat(id3DataWithFooter).concat(testData[type]));
 
@@ -90,6 +124,10 @@ QUnit.test('should identify known types', function(assert) {
   assert.equal(detectContainerForBytes(otherMp4Data), 'mp4', 'fmp4 detected as mp4');
   assert.equal(detectContainerForBytes(new Uint8Array()), '', 'no type');
   assert.equal(detectContainerForBytes(), '', 'no type');
+
+  assert.equal(detectContainerForBytes(h265seq), 'h265', 'h265 with only seq_parameter_set_rbsp, works');
+  assert.equal(detectContainerForBytes(h265shortnal), 'h265', 'h265 with short nals works');
+  assert.equal(detectContainerForBytes(h264shortnal), 'h264', 'h265 with short nals works');
 });
 
 const createBox = function(type) {

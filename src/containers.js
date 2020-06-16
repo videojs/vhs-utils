@@ -103,7 +103,9 @@ const _isLikely = {
   },
 
   flac(bytes) {
-    return bytesMatch(bytes, CONSTANTS.flac);
+    const offset = getId3Offset(bytes);
+
+    return bytesMatch(bytes, CONSTANTS.flac, {offset});
   },
   ogg(bytes) {
     return bytesMatch(bytes, CONSTANTS.ogg);

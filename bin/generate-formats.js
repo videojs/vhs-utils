@@ -55,10 +55,12 @@ const ffmpeg = (args) => promiseSpawn('ffmpeg', [
 ].concat(args));
 
 const audioCodecs = [
+  {audioCodec: 'aac', args: ['-c:a', 'aac', '-metadata', 'title="Big Buck Bunny"']},
   {audioCodec: 'mp4a.40.2', args: ['-c:a', 'aac']},
   {audioCodec: 'mp4a.40.5', args: ['-c:a', 'aac', '-profile:a', 'aac_he']},
   {audioCodec: 'mp4a.40.29', args: ['-c:a', 'aac', '-profile:a', 'aac_he_v2']},
   {audioCodec: 'mp4a.40.34', args: ['-c:a', 'mp3']},
+  {audioCodec: 'mp3', args: ['-c:a', 'mp3', '-metadata', 'title="Big Buck Bunny"']},
   {audioCodec: 'opus', args: ['-c:a', 'libopus']},
   {audioCodec: 'ac-3', args: ['-c:a', 'ac3']},
   {audioCodec: 'ec-3', args: ['-c:a', 'eac3']},
@@ -262,8 +264,30 @@ const containerCodecs = {
     return c;
 
   }),
-  aac: [{audioCodec: 'aac', args: ['-vn', '-c:a', 'aac']}],
-  mp3: [{audioCodec: 'mp3', args: ['-vn', '-c:a', 'mp3']}],
+  aac: buildCodecs((c) => {
+    // wav does not support video
+    if (c.videoCodec || !c.audioCodec) {
+      return null;
+    }
+
+    if (!(/^(aac|mp4a.40.2)$/).test(c.audioCodec)) {
+      return null;
+    }
+
+    return c;
+  }),
+  mp3: buildCodecs((c) => {
+    // wav does not support video
+    if (c.videoCodec || !c.audioCodec) {
+      return null;
+    }
+
+    if (!(/^(mp3|mp4a.40.34)$/).test(c.audioCodec)) {
+      return null;
+    }
+
+    return c;
+  }),
   ac3: [{audioCodec: 'ac-3', args: ['-vn', '-c:a', 'ac3']}],
   flac: [{audioCodec: 'flac', args: ['-vn', '-c:a', 'flac']}],
   h264: buildCodecs((c) => {
