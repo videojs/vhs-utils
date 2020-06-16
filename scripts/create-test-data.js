@@ -39,6 +39,8 @@ const buildFormatsString = function() {
   }, []);
 
   const formatFile =
+    '/* istanbul ignore file */\n' +
+    '\n' +
     `import base64ToUint8Array from "${path.resolve(baseDir, 'src/decode-b64-to-uint8-array.js')}";\n` +
     'const cache = {};\n' +
     'const formatFiles = {};\n' +

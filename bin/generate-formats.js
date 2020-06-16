@@ -175,6 +175,7 @@ const containerCodecs = {
 
     return c;
   }),
+  // TODO: should webm support more content types??
   webm: buildCodecs((c) => {
     if (c.videoCodec && !(/^(av01|vp8|vp09|vp9)/).test(c.videoCodec)) {
       return null;
