@@ -2,6 +2,7 @@ import {toUint8, bytesMatch} from './byte-helpers.js';
 import {findBox} from './mp4-helpers.js';
 import {findEbml, EBML_TAGS} from './ebml-helpers.js';
 import {getId3Offset} from './id3-helpers.js';
+import {findH264Nal, findH265Nal} from './nal-helpers.js';
 
 const CONSTANTS = {
   // "webm" string literal in hex
@@ -39,7 +40,6 @@ const CONSTANTS = {
 
   // "ftyp" string literal in hex
   'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74])
-
 };
 
 const _isLikely = {
@@ -115,17 +115,25 @@ const _isLikely = {
   wav(bytes) {
     return bytesMatch(bytes, CONSTANTS.riff) &&
       bytesMatch(bytes, CONSTANTS.wav, {offset: 8});
+  },
+  'h264'(bytes) {
+    // find seq_parameter_set_rbsp
+    return findH264Nal(bytes, 7, 3).length;
+  },
+  'h265'(bytes) {
+    // find video_parameter_set_rbsp or seq_parameter_set_rbsp
+    return findH265Nal(bytes, [32, 33], 3).length;
   }
 };
 
 // get all the isLikely functions
-// but make sure 'ts' is at the bottom
-// as it is the least specific
+// but make sure 'ts' is above h264 and h265
+// but below everything else as it is the least specific
 const isLikelyTypes = Object.keys(_isLikely)
-  // remove ts
-  .filter((t) => t !== 'ts')
+  // remove ts, h264, h265
+  .filter((t) => t !== 'ts' && t !== 'h264' && t !== 'h265')
   // add it back to the bottom
-  .concat('ts');
+  .concat(['ts', 'h264', 'h265']);
 
 // make sure we are dealing with uint8 data.
 isLikelyTypes.forEach(function(type) {

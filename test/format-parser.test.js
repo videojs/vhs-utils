@@ -1,6 +1,7 @@
 import QUnit from 'qunit';
 import formatFiles from 'create-test-data!formats';
 import {parseFormatForBytes} from '../src/format-parser.js';
+import {isVideoCodec, isAudioCodec} from '../src/codecs.js';
 
 // codecs that are equivlent and reported differently depending on the container
 const aliasMap = {
@@ -30,19 +31,31 @@ QUnit.module('parseFormatForBytes', () => Object.keys(modules).forEach(function(
 
   QUnit.module(module);
 
-  files.forEach(function(file) {
-    QUnit.test(`${file} can be identified`, function(assert) {
-      const {codecs, container} = parseFormatForBytes(formatFiles[file]());
-      const expectedCodec = file.replace('.' + module, '');
-      const codec = codecs.video || codecs.audio;
+  files.forEach((file) => QUnit.test(`${file} can be identified`, function(assert) {
+    const {codecs, container} = parseFormatForBytes(formatFiles[file]());
+    const expectedCodecs = {};
+    const codecStr = file.replace('.' + module, '');
 
-      assert.equal(container, module, module);
+    codecStr.split(',').forEach((codec) => {
+      if (isVideoCodec(codec)) {
+        expectedCodecs.video = codec;
+      } else if (isAudioCodec(codec)) {
+        expectedCodecs.audio = codec;
+      } else {
+        throw new Error(`${codec} is not detected as audio or video`);
+      }
+    });
+
+    assert.equal(container, module, module);
+    Object.keys(expectedCodecs).forEach(function(type) {
+      const expectedCodec = expectedCodecs[type];
+      const codec = codecs[type];
+
       if (aliasMap[expectedCodec]) {
         assert.notEqual(aliasMap[codec].indexOf(expectedCodec), -1, `alias match ${codec} -> ${expectedCodec}`);
       } else {
         assert.equal(codec, expectedCodec, expectedCodec);
-
       }
     });
-  });
+  }));
 }));

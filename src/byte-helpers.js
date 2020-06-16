@@ -43,6 +43,10 @@ export const bytesToNumber = function(bytes) {
 };
 
 export const numberToBytes = function(number) {
+  // eslint-disable-next-line
+  if (typeof number !== 'number' || (typeof number === 'number' && number !== number)) {
+    return [0x00];
+  }
   return number.toString(16).match(/.{1,2}/g).map((v) => parseInt(v, 16));
 };
 export const bytesToString = (bytes) => {

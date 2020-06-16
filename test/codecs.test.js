@@ -298,7 +298,10 @@ QUnit.test('works as expected', function(assert) {
     'ac-3',
     'ac-4',
     'ec-3',
-    'alac'
+    'alac',
+    'speex',
+    'aac',
+    'mp3'
   ].forEach(function(codec) {
     assert.ok(isAudioCodec(codec), `"${codec}" is seen as an audio codec`);
     assert.ok(isAudioCodec(` ${codec} `), `" ${codec} " is seen as an audio codec`);

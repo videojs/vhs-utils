@@ -4,6 +4,7 @@ import {findEbml, EBML_TAGS} from './ebml-helpers.js';
 import {findFourCC} from './riff-helpers.js';
 import {getPages} from './ogg-helpers.js';
 import {detectContainerForBytes} from './containers.js';
+import {findH264Nal, findH265Nal} from './nal-helpers.js';
 
 const padzero = (b, count) => ('0'.repeat(count) + b.toString()).slice(-count);
 
@@ -124,6 +125,7 @@ const getHvcCodec = function(bytes) {
   const profileSpace = bytes[1] >> 6;
   const profileId = bytes[1] & 0x1F;
   const tierFlag = (bytes[1] & 0x20) >> 5;
+
   const profileCompat = bytes.subarray(2, 6);
   const constraintIds = bytes.subarray(6, 12);
   const levelId = bytes[12];
@@ -299,7 +301,7 @@ const parseCodecFrom = {
       if (bytesMatch(page, [0x4F, 0x70, 0x75, 0x73], {offset: 28})) {
         codecs.audio = 'opus';
       } else if (bytesMatch(page, [0x56, 0x50, 0x38, 0x30], {offset: 29})) {
-        codecs.audio = 'vp8';
+        codecs.video = 'vp8';
       } else if (bytesMatch(page, [0x74, 0x68, 0x65, 0x6F, 0x72, 0x61], {offset: 29})) {
         codecs.video = 'theora';
       } else if (bytesMatch(page, [0x46, 0x4C, 0x41, 0x43], {offset: 29})) {
@@ -339,6 +341,7 @@ const parseCodecFrom = {
     return {codecs, mimetype};
   },
   avi(bytes) {
+    const movi = findFourCC(bytes, ['AVI', 'movi'])[0];
     const strls = findFourCC(bytes, ['AVI', 'hdrl', 'strl']);
     const codecs = {};
 
@@ -356,14 +359,27 @@ const parseCodecFrom = {
         // https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
         const handler = bytesToString(strh.subarray(4, 8));
         const compression = bytesToString(strf.subarray(16, 20));
+        // look for 00dc (compressed video fourcc code) or 00db (uncompressed video fourcc code)
+        const videoData = findFourCC(movi, ['00dc'])[0] || findFourCC(movi, ['00db'][0]);
 
-        // TODO: can we parse the codec parameters here:
         if (handler === 'H264' || compression === 'H264') {
-          codec = 'avc1';
+          if (videoData && videoData.length) {
+            codec = parseCodecFrom.h264(videoData).codecs.video;
+          } else {
+            codec = 'avc1';
+          }
         } else if (handler === 'HEVC' || compression === 'HEVC') {
-          codec = 'hev1';
+          if (videoData && videoData.length) {
+            codec = parseCodecFrom.h265(videoData).codecs.video;
+          } else {
+            codec = 'hev1';
+          }
         } else if (handler === 'FMP4' || compression === 'FMP4') {
-          codec = 'mp4v.20';
+          if (movi.length) {
+            codec = 'mp4v.20.' + movi[12].toString();
+          } else {
+            codec = 'mp4v.20';
+          }
         } else if (handler === 'VP80' || compression === 'VP80') {
           codec = 'vp8';
         } else if (handler === 'VP90' || compression === 'VP90') {
@@ -373,12 +389,27 @@ const parseCodecFrom = {
         } else if (handler === 'theo' || compression === 'theora') {
           codec = 'theora';
         } else {
-          codec = handler || compression;
+          if (videoData && videoData.length) {
+            const result = detectContainerForBytes(videoData);
+
+            if (result === 'h264') {
+              codec = parseCodecFrom.h264(movi).codecs.video;
+            }
+            if (result === 'h265') {
+              codec = parseCodecFrom.h265(movi).codecs.video;
+            }
+          }
+
+          if (!codec) {
+            codec = handler || compression;
+          }
         }
 
         codecType = 'video';
       } else if (type === 'auds') {
         codecType = 'audio';
+        // look for 00wb (audio data fourcc)
+        // const audioData = findFourCC(movi, ['01wb']);
         const wFormatTag = Array.prototype.slice.call(strf, 0, 2).reverse();
 
         codecs.audio = wFormatTagCodec(wFormatTag);
@@ -402,7 +433,7 @@ const parseCodecFrom = {
     const pmt = {};
     const codecs = {};
 
-    while (endIndex < bytes.byteLength && (!pmt.pid || !pmt.table)) {
+    while (endIndex < bytes.byteLength) {
       if (bytes[startIndex] !== SYNC_BYTE && bytes[endIndex] !== SYNC_BYTE) {
         endIndex += 1;
         startIndex += 1;
@@ -428,6 +459,7 @@ const parseCodecFrom = {
           continue;
         }
         pmt.table = {};
+        pmt.typePids = {};
 
         const sectionLength = (packet[payloadOffset + 1] & 0x0f) << 8 | packet[payloadOffset + 2];
         const tableEnd = 3 + sectionLength - 4;
@@ -438,10 +470,13 @@ const parseCodecFrom = {
           // add an entry that maps the elementary_pid to the stream_type
           const i = payloadOffset + offset;
           const type = packet[i];
+          const esPid = (packet[i + 1] & 0x1F) << 8 | packet[i + 2];
           const esLength = ((packet[i + 3] & 0x0f) << 8 | (packet[i + 4]));
           const esInfo = packet.subarray(i + 5, i + 5 + esLength);
 
-          // TODO: can we parse other the codec parameters here:
+          pmt.table[esPid] = type;
+          pmt.typePids[type] = esPid;
+
           if (type === 0x06 && bytesMatch(esInfo, [0x4F, 0x70, 0x75, 0x73], {offset: 2})) {
             codecs.audio = 'opus';
           } else if (type === 0x1B || type === 0x20) {
@@ -458,10 +493,22 @@ const parseCodecFrom = {
             codecs.audio = 'ec-3';
           } else if (type === 0x03 || type === 0x04) {
             codecs.audio = 'mp3';
-
           }
 
           offset += esLength + 5;
+        }
+
+        // we can only parse further for avc1 and hev1
+        if (codecs.video !== 'hev1' && codecs.video !== 'avc1') {
+          break;
+        }
+      } else if (pmt.pid && pmt.table) {
+        if (codecs.video === 'hev1' && pmt.typePids[0x24] === pid) {
+          codecs.video = parseCodecFrom.h265(packet).codecs.video;
+          break;
+        } else if (codecs.video === 'avc1' && (pmt.typePids[0x1B] === pid || pmt.typePids[0x20] === pid)) {
+          codecs.video = parseCodecFrom.h264(packet).codecs.video;
+          break;
         }
       }
 
@@ -592,6 +639,34 @@ const parseCodecFrom = {
   },
   flac(bytes) {
     return {codecs: {audio: 'flac'}, mimetype: 'audio/flac'};
+  },
+  'h264'(bytes) {
+    // find seq_parameter_set_rbsp to get encoding settings for codec
+    const nal = findH264Nal(bytes, 7, 3);
+    const retval = {codecs: {video: 'avc1'}, mimetype: 'video/h264'};
+
+    if (nal.length) {
+      retval.codecs.video += `.${getAvcCodec(nal)}`;
+    }
+
+    return retval;
+  },
+  'h265'(bytes) {
+    const retval = {codecs: {video: 'hev1'}, mimetype: 'video/h265'};
+
+    // find video_parameter_set_rbsp or seq_parameter_set_rbsp
+    // to get encoding settings for codec
+    const nal = findH265Nal(bytes, [32, 33], 3);
+
+    if (nal.length) {
+      const type = (nal[0] >> 1) & 0x3F;
+
+      // profile_tier_level starts at byte 5 for video_parameter_set_rbsp
+      // byte 2 for seq_parameter_set_rbsp
+      retval.codecs.video += `.${getHvcCodec(nal.subarray(type === 32 ? 5 : 2))}`;
+    }
+
+    return retval;
   }
 };
 
