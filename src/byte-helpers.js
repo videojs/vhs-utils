@@ -38,8 +38,14 @@ export const toBinaryString = function(bytes) {
   }, '');
 };
 
-export const bytesToNumber = function(bytes) {
-  return parseInt(toHexString(bytes), 16);
+export const bytesToNumber = function(bytes, signed) {
+  let number = parseInt(toHexString(bytes), 16);
+
+  if (signed) {
+    number -= Math.pow(2, bytes.length * 7 - 1) - 1;
+  }
+
+  return number;
 };
 
 export const numberToBytes = function(number) {
