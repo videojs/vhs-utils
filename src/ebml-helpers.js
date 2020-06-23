@@ -2,8 +2,11 @@ import {
   toUint8,
   bytesToNumber,
   bytesMatch,
-  numberToBytes
+  bytesToString,
+  numberToBytes,
+  padStart
 } from './byte-helpers';
+import {getAvcCodec, getHvcCodec, getAv1Codec} from './codec-helpers.js';
 
 // relevant specs for this parser:
 // https://matroska-org.github.io/libebml/specs.html
@@ -14,12 +17,18 @@ export const EBML_TAGS = {
   EBML: toUint8([0x1A, 0x45, 0xDF, 0xA3]),
   DocType: toUint8([0x42, 0x82]),
   Segment: toUint8([0x18, 0x53, 0x80, 0x67]),
+  SegmentInfo: toUint8([0x15, 0x49, 0xA9, 0x66]),
   Tracks: toUint8([0x16, 0x54, 0xAE, 0x6B]),
   Track: toUint8([0xAE]),
+  TrackNumber: toUint8([0xd7]),
+  DefaultDuration: toUint8([0x23, 0xe3, 0x83]),
   TrackEntry: toUint8([0xAE]),
   TrackType: toUint8([0x83]),
+  FlagDefault: toUint8([0x88]),
   CodecID: toUint8([0x86]),
   CodecPrivate: toUint8([0x63, 0xA2]),
+  VideoTrack: toUint8([0xe0]),
+  AudioTrack: toUint8([0xe1]),
 
   // Not used yet, but will be used for live webm/mkv
   // see https://www.matroska.org/technical/basics.html#block-structure
@@ -201,8 +210,8 @@ export const findEbml = function(bytes, paths) {
 };
 
 // see https://www.matroska.org/technical/basics.html#block-structure
-export const decodeBlock = function(block, type) {
-  let duration = -1;
+export const decodeBlock = function(block, type, timestampScale, clusterTimestamp) {
+  let duration;
 
   if (type === 'group') {
     duration = findEbml(block, [EBML_TAGS.BlockDuration]);
@@ -210,10 +219,13 @@ export const decodeBlock = function(block, type) {
     type = 'block';
     // treat data as a block after this point
   }
+  const dv = new DataView(block.buffer, block.byteOffset, block.byteLength);
   const trackNumber = getvint(block, 0);
-  const timestamp = bytesToNumber(block.subarray(trackNumber.length, trackNumber.length + 1), true);
+  const timestamp = dv.getInt16(trackNumber.length, false);
   const flags = block[trackNumber.length + 2];
   const data = block.subarray(trackNumber.length + 3);
+  // pts/dts in seconds
+  const ptsdts = (((1 / timestampScale) * (clusterTimestamp + timestamp)) * timestampScale) / 1000;
 
   // return the frame
   const parsed = {
@@ -224,6 +236,8 @@ export const decodeBlock = function(block, type) {
     lacing: ((flags & 0x06) >> 1),
     discardable: type === 'simple' && (flags & 0x01) === 1,
     frames: [],
+    pts: ptsdts,
+    dts: ptsdts,
     timestamp
   };
 
@@ -284,11 +298,176 @@ export const decodeBlock = function(block, type) {
   return parsed;
 };
 
-export const getAndDecodeBlocks = function(data) {
+// VP9 Codec Feature Metadata (CodecPrivate)
+// https://www.webmproject.org/docs/container/
+const parseVp9Private = (bytes) => {
+  let i = 0;
+  const params = {};
+
+  while (i < bytes.length) {
+    const id = bytes[i] & 0x7f;
+    const len = bytes[i + 1];
+    let val;
+
+    if (len === 1) {
+      val = bytes[i + 2];
+    } else {
+      val = bytes.subarray(i + 2, i + 2 + len);
+    }
+
+    if (id === 1) {
+      params.profile = val;
+    } else if (id === 2) {
+      params.level = val;
+    } else if (id === 3) {
+      params.bitDepth = val;
+    } else if (id === 4) {
+      params.chromaSubsampling = val;
+    } else {
+      params[id] = val;
+    }
+
+    i += 2 + len;
+  }
+
+  return params;
+};
+
+export const parseTracks = function(bytes) {
+  bytes = toUint8(bytes);
+  const decodedTracks = [];
+  let tracks = findEbml(bytes, [EBML_TAGS.Segment, EBML_TAGS.Tracks, EBML_TAGS.Track]);
+
+  if (!tracks.length) {
+    tracks = findEbml(bytes, [EBML_TAGS.Tracks, EBML_TAGS.Track]);
+  }
+
+  if (!tracks.length) {
+    tracks = findEbml(bytes, [EBML_TAGS.Track]);
+  }
+
+  if (!tracks.length) {
+    return decodedTracks;
+  }
+
+  tracks.forEach(function(track) {
+    let trackType = findEbml(track, EBML_TAGS.TrackType)[0];
+
+    if (!trackType || !trackType.length) {
+      return;
+    }
+
+    // 1 is video, 2 is audio, 17 is subtitle
+    // other values are unimportant in this context
+    if (trackType[0] === 1) {
+      trackType = 'video';
+    } else if (trackType[0] === 2) {
+      trackType = 'audio';
+    } else if (trackType[0] === 17) {
+      trackType = 'subtitle';
+    } else {
+      return;
+    }
+
+    // todo parse language
+    const decodedTrack = {
+      rawCodec: bytesToString(findEbml(track, [EBML_TAGS.CodecID])[0]),
+      type: trackType,
+      codecPrivate: findEbml(track, [EBML_TAGS.CodecPrivate])[0],
+      number: bytesToNumber(findEbml(track, [EBML_TAGS.TrackNumber])[0]),
+      defaultDuration: bytesToNumber(findEbml(track, [EBML_TAGS.DefaultDuration])[0]),
+      default: findEbml(track, [EBML_TAGS.FlagDefault])[0],
+      rawData: track
+    };
+
+    let codec = '';
+
+    if ((/V_MPEG4\/ISO\/AVC/).test(decodedTrack.rawCodec)) {
+      codec = `avc1.${getAvcCodec(decodedTrack.codecPrivate)}`;
+    } else if ((/V_MPEGH\/ISO\/HEVC/).test(decodedTrack.rawCodec)) {
+      codec = `hev1.${getHvcCodec(decodedTrack.codecPrivate)}`;
+    } else if ((/V_MPEG4\/ISO\/ASP/).test(decodedTrack.rawCodec)) {
+      if (decodedTrack.codecPrivate) {
+        codec = 'mp4v.20.' + decodedTrack.codecPrivate[4].toString();
+      } else {
+        codec = 'mp4v.20.9';
+      }
+    } else if ((/^V_THEORA/).test(decodedTrack.rawCodec)) {
+      codec = 'theora';
+    } else if ((/^V_VP8/).test(decodedTrack.rawCodec)) {
+      codec = 'vp8';
+    } else if ((/^V_VP9/).test(decodedTrack.rawCodec)) {
+      if (decodedTrack.codecPrivate) {
+        const {profile, level, bitDepth, chromaSubsampling} = parseVp9Private(decodedTrack.codecPrivate);
+
+        codec = 'vp09.';
+        codec += `${padStart(profile, 2, '0')}.`;
+        codec += `${padStart(level, 2, '0')}.`;
+        codec += `${padStart(bitDepth, 2, '0')}.`;
+        codec += `${padStart(chromaSubsampling, 2, '0')}`;
+
+        // Video -> Colour -> Ebml name
+        const matrixCoefficients = findEbml(track, [0xE0, [0x55, 0xB0], [0x55, 0xB1]])[0] || [];
+        const videoFullRangeFlag = findEbml(track, [0xE0, [0x55, 0xB0], [0x55, 0xB9]])[0] || [];
+        const transferCharacteristics = findEbml(track, [0xE0, [0x55, 0xB0], [0x55, 0xBA]])[0] || [];
+        const colourPrimaries = findEbml(track, [0xE0, [0x55, 0xB0], [0x55, 0xBB]])[0] || [];
+
+        // if we find any optional codec parameter specify them all.
+        if (matrixCoefficients.length ||
+          videoFullRangeFlag.length ||
+          transferCharacteristics.length ||
+          colourPrimaries.length) {
+          codec += `.${padStart(colourPrimaries[0], 2, '0')}`;
+          codec += `.${padStart(transferCharacteristics[0], 2, '0')}`;
+          codec += `.${padStart(matrixCoefficients[0], 2, '0')}`;
+          codec += `.${padStart(videoFullRangeFlag[0], 2, '0')}`;
+        }
+
+      } else {
+        codec = 'vp9';
+      }
+    } else if ((/^V_AV1/).test(decodedTrack.rawCodec)) {
+      codec = `av01.${getAv1Codec(decodedTrack.codecPrivate)}`;
+    } else if ((/A_ALAC/).test(decodedTrack.rawCodec)) {
+      codec = 'alac';
+    } else if ((/A_MPEG\/L2/).test(decodedTrack.rawCodec)) {
+      codec = 'mp2';
+    } else if ((/A_MPEG\/L3/).test(decodedTrack.rawCodec)) {
+      codec = 'mp3';
+    } else if ((/^A_AAC/).test(decodedTrack.rawCodec)) {
+      if (decodedTrack.codecPrivate) {
+        codec = 'mp4a.40.' + (decodedTrack.codecPrivate[0] >>> 3).toString();
+      } else {
+        codec = 'mp4a.40.2';
+      }
+    } else if ((/^A_AC3/).test(decodedTrack.rawCodec)) {
+      codec = 'ac-3';
+    } else if ((/^A_PCM/).test(decodedTrack.rawCodec)) {
+      codec = 'pcm';
+    } else if ((/^A_MS\/ACM/).test(decodedTrack.rawCodec)) {
+      codec = 'speex';
+    } else if ((/^A_EAC3/).test(decodedTrack.rawCodec)) {
+      codec = 'ec-3';
+    } else if ((/^A_VORBIS/).test(decodedTrack.rawCodec)) {
+      codec = 'vorbis';
+    } else if ((/^A_FLAC/).test(decodedTrack.rawCodec)) {
+      codec = 'flac';
+    } else if ((/^A_OPUS/).test(decodedTrack.rawCodec)) {
+      codec = 'opus';
+    }
+
+    decodedTrack.codec = codec;
+    decodedTracks.push(decodedTrack);
+  });
+
+  return decodedTracks.sort((a, b) => a.number - b.number);
+};
+
+export const parseData = function(data) {
   const allBlocks = [];
 
   const segment = findEbml(data, [EBML_TAGS.Segment])[0];
-  let timestampScale = findEbml(segment, [EBML_TAGS.TimestampScale])[0];
+  let timestampScale = findEbml(segment, [EBML_TAGS.SegmentInfo, EBML_TAGS.TimestampScale])[0];
 
   // in nanoseconds, defaults to 1ms
   if (timestampScale && timestampScale.length) {
@@ -297,8 +476,8 @@ export const getAndDecodeBlocks = function(data) {
     timestampScale = 1000000;
   }
 
-  // TODO: handle "live" length with unknown cluster length
   const clusters = findEbml(segment, [EBML_TAGS.Cluster]);
+  const tracks = parseTracks(segment);
 
   clusters.forEach(function(cluster, ci) {
     const simpleBlocks = findEbml(cluster, [EBML_TAGS.SimpleBlock]).map((b) => ({type: 'simple', data: b}));
@@ -315,10 +494,11 @@ export const getAndDecodeBlocks = function(data) {
       .sort((a, b) => a.data.byteOffset - b.data.byteOffset);
 
     blocks.forEach(function(block, bi) {
-      // TODO: should
-      allBlocks.push(decodeBlock(block.data, block.type));
+      const decoded = decodeBlock(block.data, block.type, timestampScale, timestamp);
+
+      allBlocks.push(decoded);
     });
   });
 
-  return allBlocks;
+  return {tracks, blocks: allBlocks};
 };

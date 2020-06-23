@@ -1,4 +1,12 @@
-import {stringToBytes, toUint8, bytesMatch, bytesToString} from './byte-helpers.js';
+import {
+  stringToBytes,
+  toUint8,
+  bytesMatch,
+  bytesToString,
+  toHexString,
+  padStart
+} from './byte-helpers.js';
+import {getAvcCodec, getHvcCodec, getAv1Codec} from './codec-helpers.js';
 
 const normalizePath = function(path) {
   if (typeof path === 'string') {
@@ -191,4 +199,100 @@ export const findNamedBox = function(bytes, path) {
   // we've finished searching all of bytes
   return [];
 
+};
+
+export const parseTracks = function(bytes) {
+  bytes = toUint8(bytes);
+
+  const traks = findBox(bytes, ['moov', 'trak']);
+  const tracks = [];
+
+  traks.forEach(function(trak) {
+    const track = {
+
+    };
+    const mdia = findBox(trak, ['mdia'])[0];
+    const hdlr = findBox(mdia, ['hdlr'])[0];
+    const stsd = findBox(mdia, ['minf', 'stbl', 'stsd'])[0];
+
+    const trakType = bytesToString(hdlr.subarray(8, 12));
+
+    if (trakType === 'soun') {
+      track.type = 'audio';
+    } else if (trakType === 'vide') {
+      track.type = 'video';
+    } else {
+      return;
+    }
+
+    const sampleDescriptions = stsd.subarray(8);
+    let codec = bytesToString(sampleDescriptions.subarray(4, 8));
+    const codecBox = findBox(sampleDescriptions, [codec])[0];
+
+    if (codec === 'avc1') {
+      // AVCDecoderConfigurationRecord
+      codec += `.${getAvcCodec(findNamedBox(codecBox, 'avcC'))}`;
+      // HEVCDecoderConfigurationRecord
+    } else if (codec === 'hvc1' || codec === 'hev1') {
+      codec += `.${getHvcCodec(findNamedBox(codecBox, 'hvcC'))}`;
+    } else if (codec === 'mp4a' || codec === 'mp4v') {
+      const esds = findNamedBox(codecBox, 'esds');
+      const esDescriptor = parseDescriptors(esds.subarray(4))[0];
+      const decoderConfig = esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
+
+      if (decoderConfig) {
+        codec += '.' + toHexString(decoderConfig.oti);
+        if (decoderConfig.oti === 0x40) {
+          codec += '.' + (decoderConfig.descriptors[0].bytes[0] >> 3).toString();
+        } else if (decoderConfig.oti === 0x20) {
+          codec += '.' + (decoderConfig.descriptors[0].bytes[4]).toString();
+        } else if (decoderConfig.oti === 0xdd) {
+          codec = 'vorbis';
+        }
+      }
+    } else if (codec === 'av01') {
+      // AV1DecoderConfigurationRecord
+      codec += `.${getAv1Codec(findNamedBox(codecBox, 'av1C'))}`;
+    } else if (codec === 'vp09') {
+      // VPCodecConfigurationRecord
+      const vpcC = findNamedBox(codecBox, 'vpcC');
+
+      // https://www.webmproject.org/vp9/mp4/
+      const profile = vpcC[0];
+      const level = vpcC[1];
+      const bitDepth = vpcC[2] >> 4;
+      const chromaSubsampling = (vpcC[2] & 0x0F) >> 1;
+      const videoFullRangeFlag = (vpcC[2] & 0x0F) >> 3;
+      const colourPrimaries = vpcC[3];
+      const transferCharacteristics = vpcC[4];
+      const matrixCoefficients = vpcC[5];
+
+      codec += `.${padStart(profile, 2, '0')}`;
+      codec += `.${padStart(level, 2, '0')}`;
+      codec += `.${padStart(bitDepth, 2, '0')}`;
+      codec += `.${padStart(chromaSubsampling, 2, '0')}`;
+      codec += `.${padStart(colourPrimaries, 2, '0')}`;
+      codec += `.${padStart(transferCharacteristics, 2, '0')}`;
+      codec += `.${padStart(matrixCoefficients, 2, '0')}`;
+      codec += `.${padStart(videoFullRangeFlag, 2, '0')}`;
+    } else if (codec === 'theo') {
+      codec = 'theora';
+    } else if (codec === 'spex') {
+      codec = 'speex';
+    } else if (codec === '.mp3') {
+      codec = 'mp4a.40.34';
+    } else if (codec === 'msVo') {
+      codec = 'vorbis';
+    } else {
+      codec = codec.toLowerCase();
+    }
+    /* eslint-enable */
+    // flac, ac-3, ec-3, opus
+    track.codec = codec;
+
+    // codec has no sub parameters
+    tracks.push(track);
+  });
+
+  return tracks;
 };

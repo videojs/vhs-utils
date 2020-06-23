@@ -1,3 +1,5 @@
+export const padStart = (b, len, str = ' ') => (str.repeat(len) + b.toString()).slice(-len);
+
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
 
 export const toUint8 = function(bytes) {
@@ -26,7 +28,7 @@ export const toHexString = function(bytes) {
   bytes = toUint8(bytes);
 
   return bytes.reduce(function(acc, b) {
-    return acc + ('00' + b.toString(16)).slice(-2);
+    return acc + padStart(b.toString(16), 2, '0');
   }, '');
 };
 
@@ -34,7 +36,7 @@ export const toBinaryString = function(bytes) {
   bytes = toUint8(bytes);
 
   return bytes.reduce(function(acc, b) {
-    return acc + ('00000000' + b.toString(2)).slice(-8);
+    return acc + padStart(b.toString(2), 8, '0');
   }, '');
 };
 
