@@ -4,7 +4,7 @@ const shelljs = require('shelljs');
 const childProcess = require('child_process');
 const path = require('path');
 
-const baseDir = path.join(__dirname, '..', 'formats');
+const baseDir = path.join(__dirname, '..', 'test', 'formats');
 const DURATION = '0.01s';
 const INPUT_FILE = path.join(__dirname, 'big-buck-bunny.mp4');
 

@@ -214,7 +214,11 @@ export const decodeBlock = function(block, type, timestampScale, clusterTimestam
   let duration;
 
   if (type === 'group') {
-    duration = findEbml(block, [EBML_TAGS.BlockDuration]);
+    duration = findEbml(block, [EBML_TAGS.BlockDuration])[0];
+    if (duration) {
+      duration = bytesToNumber(duration);
+      duration = (((1 / timestampScale) * (duration)) * timestampScale) / 1000;
+    }
     block = findEbml(block, [EBML_TAGS.Block])[0];
     type = 'block';
     // treat data as a block after this point
