@@ -1,14 +1,14 @@
 import {toUint8, stringToBytes, bytesMatch} from './byte-helpers.js';
 
 const CONSTANTS = {
-  LIST: stringToBytes('LIST'),
-  RIFF: stringToBytes('RIFF'),
-  WAVE: stringToBytes('WAVE')
+  LIST: toUint8([0x4c, 0x49, 0x53, 0x54]),
+  RIFF: toUint8([0x52, 0x49, 0x46, 0x46]),
+  WAVE: toUint8([0x57, 0x41, 0x56, 0x45])
 };
 
 const normalizePath = function(path) {
   if (typeof path === 'string') {
-    return stringToBytes(path, 16);
+    return stringToBytes(path);
   }
 
   if (typeof path === 'number') {

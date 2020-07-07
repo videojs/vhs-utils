@@ -1,4 +1,6 @@
-import {bytesToString, toUint8} from './byte-helpers';
+import {bytesMatch, toUint8} from './byte-helpers';
+
+const SYNC_WORD = toUint8([0x4f, 0x67, 0x67, 0x53]);
 
 export const getPages = function(bytes, start, end = Infinity) {
   bytes = toUint8(bytes);
@@ -8,8 +10,8 @@ export const getPages = function(bytes, start, end = Infinity) {
 
   while (i < bytes.length && pages.length < end) {
     // we are unsynced,
-    // find the next syncwork
-    if (!(/^OggS$/).test(bytesToString(bytes.subarray(i, i + 4)))) {
+    // find the next syncword
+    if (!bytesMatch(bytes, SYNC_WORD, {offset: i})) {
       i++;
       continue;
     }

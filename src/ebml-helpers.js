@@ -50,22 +50,14 @@ export const EBML_TAGS = {
  * case we have to xor all the length bits from another value.
  */
 const LENGTH_TABLE = [
-  // 0b10000000
-  128,
-  // 0b01000000
-  64,
-  // 0b00100000
-  32,
-  // 0b00010000
-  16,
-  // 0b00001000
-  8,
-  // 0b00000100
-  4,
-  // 0b00000010
-  2,
-  // 0b00000001
-  1
+  0b10000000,
+  0b01000000,
+  0b00100000,
+  0b00010000,
+  0b00001000,
+  0b00000100,
+  0b00000010,
+  0b00000001
 ];
 
 const getLength = function(byte) {
@@ -467,7 +459,7 @@ export const parseTracks = function(bytes) {
   return decodedTracks.sort((a, b) => a.number - b.number);
 };
 
-export const parseData = function(data) {
+export const parseData = function(data, tracks) {
   const allBlocks = [];
 
   const segment = findEbml(data, [EBML_TAGS.Segment])[0];
@@ -481,7 +473,10 @@ export const parseData = function(data) {
   }
 
   const clusters = findEbml(segment, [EBML_TAGS.Cluster]);
-  const tracks = parseTracks(segment);
+
+  if (!tracks) {
+    tracks = parseTracks(segment);
+  }
 
   clusters.forEach(function(cluster, ci) {
     const simpleBlocks = findEbml(cluster, [EBML_TAGS.SimpleBlock]).map((b) => ({type: 'simple', data: b}));

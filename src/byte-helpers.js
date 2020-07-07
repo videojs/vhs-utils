@@ -1,7 +1,6 @@
+export const countBits = (x) => Math.ceil((Math.log2 ? Math.log2(x) : (Math.log(x) / Math.log(2))));
 export const padStart = (b, len, str = ' ') => (str.repeat(len) + b.toString()).slice(-len);
-
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
-
 export const toUint8 = function(bytes) {
   if (bytes instanceof Uint8Array) {
     return bytes;
@@ -96,15 +95,16 @@ export const stringToBytes = (string, stringIsBytes = false) => {
 };
 
 export const concatTypedArrays = (...buffers) => {
-  const totalLength = buffers.reduce((total, buf) => {
-    const len = buf && (buf.byteLength || buf.length);
+  buffers = buffers.filter((b) => b && (b.byteLength || b.length) && typeof b !== 'string');
 
-    total += len || 0;
+  if (buffers.length <= 1) {
+    // for 0 length we will return empty uint8
+    // for 1 length we return the first uint8
+    return toUint8(buffers[0]);
+  }
 
-    return total;
-  }, 0);
-
-  const tempBuffer = new Uint8Array(totalLength);
+  const totalLen = buffers.reduce((total, buf, i) => total + (buf.byteLength || buf.length), 0);
+  const tempBuffer = new Uint8Array(totalLen);
 
   let offset = 0;
 

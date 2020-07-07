@@ -10,7 +10,7 @@ import {getAvcCodec, getHvcCodec, getAv1Codec} from './codec-helpers.js';
 
 const normalizePath = function(path) {
   if (typeof path === 'string') {
-    return stringToBytes(path, 16);
+    return stringToBytes(path);
   }
 
   if (typeof path === 'number') {
