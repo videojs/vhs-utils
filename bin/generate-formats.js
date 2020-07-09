@@ -265,35 +265,19 @@ const containerCodecs = {
     return c;
 
   }),
-  aac: buildCodecs((c) => {
-    // wav does not support video
-    if (c.videoCodec || !c.audioCodec) {
-      return null;
-    }
-
-    if (!(/^(aac|mp4a.40.2)$/).test(c.audioCodec)) {
-      return null;
-    }
-
-    return c;
-  }),
-  mp3: buildCodecs((c) => {
-    // wav does not support video
-    if (c.videoCodec || !c.audioCodec) {
-      return null;
-    }
-
-    if (!(/^(mp3|mp4a.40.34)$/).test(c.audioCodec)) {
-      return null;
-    }
-
-    return c;
-  }),
-  ac3: [
-    {audioCodec: 'ac-3', args: ['-vn', '-c:a', 'ac3']},
-    {audioCodec: 'ec-3', args: ['-vn', '-c:a', 'eac3']}
+  aac: [
+    {audioCodec: 'aac', args: ['-vn', '-metadata', 'title="aac"']}
   ],
-  flac: [{audioCodec: 'flac', args: ['-vn', '-c:a', 'flac']}],
+  mp3: [
+    {audioCodec: 'mp3', args: ['-vn', '-metadata', 'title="mp3"']}
+  ],
+  ac3: [
+    {audioCodec: 'ac-3', args: ['-vn', '-c:a', 'ac3', '-metadata', 'title="ac3"']},
+    {audioCodec: 'ec-3', args: ['-vn', '-c:a', 'eac3', '-metadata', 'title="eac3"']}
+  ],
+  flac: [
+    {audioCodec: 'flac', args: ['-vn', '-c:a', 'flac', '-metadata', 'title="flac"']}
+  ],
   h264: buildCodecs((c) => {
     // h264 only supports hevc video content
     if (c.audioCodec || !c.videoCodec) {
