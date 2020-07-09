@@ -7,6 +7,7 @@ import {detectContainerForBytes} from './containers.js';
 import {findH264Nal, findH265Nal} from './nal-helpers.js';
 import {parseTs} from './m2ts-helpers.js';
 import {getAvcCodec, getHvcCodec} from './codec-helpers.js';
+import {getId3Offset} from './id3-helpers.js';
 
 // https://docs.microsoft.com/en-us/windows/win32/medfound/audio-subtype-guids
 // https://tools.ietf.org/html/rfc2361
@@ -266,7 +267,18 @@ const parseCodecFrom = {
     return {codecs: {audio: 'aac'}, mimetype: 'audio/aac'};
   },
   ac3(bytes) {
-    return {codecs: {audio: 'ac-3'}, mimetype: 'audio/vnd.dolby.dd-raw'};
+    // past id3 and syncword
+    const offset = getId3Offset(bytes) + 2;
+    // default to ac-3
+    let codec = 'ac-3';
+
+    if (bytesMatch(bytes, [0xB8, 0xE0], {offset})) {
+      codec = 'ac-3';
+    // 0x01, 0x7F
+    } else if (bytesMatch(bytes, [0x01, 0x7f], {offset})) {
+      codec = 'ec-3';
+    }
+    return {codecs: {audio: codec}, mimetype: 'audio/vnd.dolby.dd-raw'};
   },
   mp3(bytes) {
     return {codecs: {audio: 'mp3'}, mimetype: 'audio/mpeg'};

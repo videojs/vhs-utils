@@ -4,7 +4,7 @@ const shelljs = require('shelljs');
 const childProcess = require('child_process');
 const path = require('path');
 
-const baseDir = path.join(__dirname, '..', 'test', 'formats');
+const baseDir = path.join(__dirname, '..', 'test', 'fixtures', 'formats');
 const DURATION = '0.01s';
 const INPUT_FILE = path.join(__dirname, 'big-buck-bunny.mp4');
 
@@ -289,7 +289,10 @@ const containerCodecs = {
 
     return c;
   }),
-  ac3: [{audioCodec: 'ac-3', args: ['-vn', '-c:a', 'ac3']}],
+  ac3: [
+    {audioCodec: 'ac-3', args: ['-vn', '-c:a', 'ac3']},
+    {audioCodec: 'ec-3', args: ['-vn', '-c:a', 'eac3']}
+  ],
   flac: [{audioCodec: 'flac', args: ['-vn', '-c:a', 'flac']}],
   h264: buildCodecs((c) => {
     // h264 only supports hevc video content

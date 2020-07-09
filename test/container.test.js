@@ -87,9 +87,9 @@ QUnit.test('should identify known types', function(assert) {
 
   assert.equal(detectContainerForBytes(mp4Bytes), 'mp4', 'styp mp4 detected as mp4');
 
-  // mp3/aac/flac audio can have id3 data before the
+  // mp3/aac/flac/ac3 audio can have id3 data before the
   // signature for the file, so we need to handle that.
-  ['mp3', 'aac', 'flac'].forEach(function(type) {
+  ['mp3', 'aac', 'flac', 'ac3'].forEach(function(type) {
     const dataWithId3 = new Uint8Array([].concat(id3Data).concat(testData[type]));
     const dataWithId3Footer = new Uint8Array([].concat(id3DataWithFooter).concat(testData[type]));
 

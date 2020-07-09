@@ -81,7 +81,9 @@ const _isLikely = {
     return bytesMatch(bytes, CONSTANTS['3gp'], {offset: 4});
   },
   ac3(bytes) {
-    return bytesMatch(bytes, CONSTANTS.ac3);
+    const offset = getId3Offset(bytes);
+
+    return bytesMatch(bytes, CONSTANTS.ac3, {offset});
   },
 
   ts(bytes) {
