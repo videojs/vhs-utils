@@ -13,6 +13,7 @@ import {
 import window from 'global/window';
 
 const arrayNames = [];
+const BigInt = window.BigInt;
 
 [
   'Array',
@@ -34,7 +35,7 @@ const arrayNames = [];
 QUnit.module('bytesToString');
 
 const testString = 'hello竜';
-const testBytes = [
+const testBytes = toUint8([
   // h
   0x68,
   // e
@@ -47,9 +48,9 @@ const testBytes = [
   0x6f,
   // 竜
   0xe7, 0xab, 0x9c
-];
+]);
 
-const rawBytes = [0x47, 0x40, 0x00, 0x10, 0x00, 0x00, 0xb0, 0x0d, 0x00, 0x01];
+const rawBytes = toUint8([0x47, 0x40, 0x00, 0x10, 0x00, 0x00, 0xb0, 0x0d, 0x00, 0x01]);
 
 QUnit.test('should function as expected', function(assert) {
   arrayNames.forEach(function(name) {
@@ -68,10 +69,10 @@ QUnit.module('stringToBytes');
 
 QUnit.test('should function as expected', function(assert) {
   assert.deepEqual(stringToBytes(testString), testBytes, 'returns an array of bytes');
-  assert.deepEqual(stringToBytes(), [], 'empty array for undefined');
-  assert.deepEqual(stringToBytes(null), [], 'empty array for null');
-  assert.deepEqual(stringToBytes(''), [], 'empty array for empty string');
-  assert.deepEqual(stringToBytes(10), [0x31, 0x30], 'converts numbers to strings');
+  assert.deepEqual(stringToBytes(), toUint8(), 'empty array for undefined');
+  assert.deepEqual(stringToBytes(null), toUint8(), 'empty array for null');
+  assert.deepEqual(stringToBytes(''), toUint8(), 'empty array for empty string');
+  assert.deepEqual(stringToBytes(10), toUint8([0x31, 0x30]), 'converts numbers to strings');
   assert.deepEqual(stringToBytes(bytesToString(testBytes)), testBytes, 'bytesToString -> stringToBytes works');
   assert.deepEqual(stringToBytes(bytesToString(rawBytes), true), rawBytes, 'equal to original with raw bytes mode');
   assert.notDeepEqual(stringToBytes(bytesToString(rawBytes)), rawBytes, 'without raw byte mode works, not equal');
@@ -199,22 +200,107 @@ QUnit.test('should function as expected', function(assert) {
 });
 
 QUnit.module('bytesToNumber');
-QUnit.test('should function as expected', function(assert) {
+QUnit.test('sanity', function(assert) {
   assert.equal(bytesToNumber(0xFF), 0xFF, 'single value');
-  assert.equal(bytesToNumber([0xFF, 0xFF]), 0xFFFF, 'works with array');
+  assert.equal(bytesToNumber([0xFF, 0x01]), 0xFF01, 'works with array');
   assert.equal(bytesToNumber(toUint8([0xFF, 0xbb])), 0xFFBB, 'works with uint8');
   assert.equal(bytesToNumber(toUint8([0xFF, 0xaa]).buffer), 0xFFAA, 'works with buffer');
   assert.equal(bytesToNumber(toUint8([0xFF, 0xaa, 0xbb]).subarray(1, 3)), 0xAABB, 'works with subarray');
-  assert.equal(bytesToNumber([0x0F, 0x01, 0xF0, 0x00]), 0x0F01F000, 'works with varying digits digits');
+});
+QUnit.test('unsigned and littleEndian work', function(assert) {
+  // works with any number of bits
+  assert.equal(bytesToNumber([0xFF]), 0xFF, 'u8');
+  assert.equal(bytesToNumber([0xFF, 0xAA]), 0xFFAA, 'u16');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB]), 0xFFAABB, 'u24');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC]), 0xFFAABBCC, 'u32');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD]), 0xFFAABBCCDD, 'u40');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE]), 0xFFAABBCCDDEE, 'u48');
+
+  assert.equal(bytesToNumber([0xFF], {le: true}), 0xFF, 'u8 le');
+  assert.equal(bytesToNumber([0xFF, 0xAA], {le: true}), 0xAAFF, 'u16 le');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB], {le: true}), 0xBBAAFF, 'u24 le');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC], {le: true}), 0xCCBBAAFF, 'u32 le');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD], {le: true}), 0xDDCCBBAAFF, 'u40 le');
+  assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE], {le: true}), 0xEEDDCCBBAAFF, 'u48 le');
+
+  if (BigInt) {
+    assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x99]), 0xFFAABBCCDDEE99, 'u56');
+    assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x99, 0x88]), 0xFFAABBCCDDEE9988, 'u64');
+    assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x99], {le: true}), 0x99EEDDCCBBAAFF, 'u56 le');
+    assert.equal(bytesToNumber([0xFF, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x99, 0x88], {le: true}), 0x8899EEDDCCBBAAFF, 'u64 le');
+  }
+});
+
+QUnit.test('signed and littleEndian work', function(assert) {
+  assert.equal(bytesToNumber([0xF0], {signed: true}), -16, 'i8');
+  assert.equal(bytesToNumber([0x80, 0x70], {signed: true}), -32656, 'i16');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f], {signed: true}), -8359777, 'i24');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF], {signed: true}), -2140102657, 'i32');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF, 0x10], {signed: true}), -547866280176, 'i40');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF, 0x10, 0x89], {signed: true}), -140253767724919, 'i48');
+
+  assert.equal(bytesToNumber([0xF0], {signed: true, le: true}), -16, 'i8 le');
+  assert.equal(bytesToNumber([0x80, 0x70], {signed: true, le: true}), 0x7080, 'i16 le');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f], {signed: true, le: true}), -6328192, 'i24 le');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF], {signed: true, le: true}), -6328192, 'i32 le');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF, 0x10], {signed: true, le: true}), 73008115840, 'i40 le');
+  assert.equal(bytesToNumber([0x80, 0x70, 0x9f, 0xFF, 0x10, 0x89], {signed: true, le: true}), -130768875589504, 'i48 le');
+
+  if (BigInt) {
+    assert.equal(bytesToNumber([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], {signed: true}), -1, 'i56');
+    assert.equal(bytesToNumber([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], {signed: true}), -1, 'i64');
+    assert.equal(bytesToNumber([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], {signed: true, le: true}), -1, 'i56 le');
+    assert.equal(bytesToNumber([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF], {signed: true, le: true}), -1, 'i64 le');
+  }
 });
 
 QUnit.module('numberToBytes');
-QUnit.test('should function as expected', function(assert) {
-  assert.deepEqual(numberToBytes(), [0x00], 'no bytes');
-  assert.deepEqual(numberToBytes(0xFFFF), [0xFF, 0xFF], 'two bytes');
-  assert.deepEqual(numberToBytes(0xFFFa), [0xFF, 0xFa], 'alternative two bytes');
-  assert.deepEqual(numberToBytes(0xFFFabb), [0xFF, 0xFa, 0xbb], 'three bytes');
-  assert.deepEqual(numberToBytes(0xFFFabbcc), [0xFF, 0xFa, 0xbb, 0xcc], 'four bytes');
+
+QUnit.test('unsigned negative and positive', function(assert) {
+  assert.deepEqual(numberToBytes(), toUint8([0x00]), 'no bytes');
+  assert.deepEqual(numberToBytes(0xFF), toUint8([0xFF]), 'u8');
+  assert.deepEqual(numberToBytes(0xFFaa), toUint8([0xFF, 0xaa]), 'u16');
+  assert.deepEqual(numberToBytes(0xFFaabb), toUint8([0xFF, 0xaa, 0xbb]), 'u24');
+  assert.deepEqual(numberToBytes(0xFFaabbcc), toUint8([0xFF, 0xaa, 0xbb, 0xcc]), 'u32');
+  assert.deepEqual(numberToBytes(0xFFaabbccdd), toUint8([0xFF, 0xaa, 0xbb, 0xcc, 0xdd]), 'u40');
+  assert.deepEqual(numberToBytes(0xFFaabbccddee), toUint8([0xFF, 0xaa, 0xbb, 0xcc, 0xdd, 0xee]), 'u48');
+
+  assert.deepEqual(numberToBytes(-16), toUint8([0xF0]), 'negative to u8');
+  assert.deepEqual(numberToBytes(-32640), toUint8([0x80, 0x80]), 'negative to u16');
+  assert.deepEqual(numberToBytes(-3264062), toUint8([0xce, 0x31, 0xc2]), 'negative to u24');
+  assert.deepEqual(numberToBytes(-2139062144), toUint8([0x80, 0x80, 0x80, 0x80]), 'negative to u32');
+  assert.deepEqual(numberToBytes(-3139062144), toUint8([0xff, 0x44, 0xe5, 0xb6, 0x80]), 'negative u40');
+  assert.deepEqual(numberToBytes(-3139062144444), toUint8([0xfd, 0x25, 0x21, 0x50, 0xe2, 0x44]), 'negative u48');
+
+  if (BigInt) {
+    assert.deepEqual(numberToBytes(BigInt('0xFFaabbccddee99')), toUint8([0xFF, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x99]), 'u56');
+    assert.deepEqual(numberToBytes(BigInt('0xFFaabbccddee9988')), toUint8([0xFF, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x99, 0x88]), 'u64');
+    assert.deepEqual(numberToBytes(BigInt('-31390621444448812')), toUint8([0x90, 0x7a, 0x65, 0x67, 0x86, 0x5d, 0xd4]), 'negative to u56');
+    assert.deepEqual(numberToBytes(BigInt('-9187201950435737472')), toUint8([0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80]), 'u64');
+  }
+});
+
+QUnit.test('unsigned littleEndian negative and positive', function(assert) {
+  assert.deepEqual(numberToBytes(0xFF, {le: true}), toUint8([0xFF]), 'u8');
+  assert.deepEqual(numberToBytes(0xFFaa, {le: true}), toUint8([0xaa, 0xFF]), 'u16');
+  assert.deepEqual(numberToBytes(0xFFaabb, {le: true}), toUint8([0xbb, 0xaa, 0xFF]), 'u24');
+  assert.deepEqual(numberToBytes(0xFFaabbcc, {le: true}), toUint8([0xcc, 0xbb, 0xaa, 0xff]), 'u32');
+  assert.deepEqual(numberToBytes(0xFFaabbccdd, {le: true}), toUint8([0xdd, 0xcc, 0xbb, 0xaa, 0xff]), 'u40');
+  assert.deepEqual(numberToBytes(0xFFaabbccddee, {le: true}), toUint8([0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0xff]), 'u48');
+
+  assert.deepEqual(numberToBytes(-16, {le: true}), toUint8([0xF0]), 'negative to u8');
+  assert.deepEqual(numberToBytes(-32640, {le: true}), toUint8([0x80, 0x80]), 'negative to u16');
+  assert.deepEqual(numberToBytes(-3264062, {le: true}), toUint8([0xc2, 0x31, 0xce]), 'negative to u24');
+  assert.deepEqual(numberToBytes(-2139062144, {le: true}), toUint8([0x80, 0x80, 0x80, 0x80]), 'negative to u32');
+  assert.deepEqual(numberToBytes(-3139062144, {le: true}), toUint8([0x80, 0xb6, 0xe5, 0x44, 0xff]), 'negative u40');
+  assert.deepEqual(numberToBytes(-3139062144444, {le: true}), toUint8([0x44, 0xe2, 0x50, 0x21, 0x25, 0xfd]), 'negative u48');
+
+  if (BigInt) {
+    assert.deepEqual(numberToBytes(BigInt('0xFFaabbccddee99'), {le: true}), toUint8([0x99, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0xff]), 'u56');
+    assert.deepEqual(numberToBytes(BigInt('0xFFaabbccddee9988'), {le: true}), toUint8([0x88, 0x99, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0xff]), 'u64');
+    assert.deepEqual(numberToBytes(BigInt('-31390621444448812'), {le: true}), toUint8([0xd4, 0x5d, 0x86, 0x67, 0x65, 0x7a, 0x90]), 'negative to u56');
+    assert.deepEqual(numberToBytes(BigInt('-9187201950435737472'), {le: true}), toUint8([0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80]), 'u64');
+  }
 });
 
 QUnit.module('bytesMatch');

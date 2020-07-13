@@ -1,4 +1,13 @@
-export const countBits = (x) => Math.ceil((Math.log2 ? Math.log2(x) : (Math.log(x) / Math.log(2))));
+import window from 'global/window';
+
+// const log2 = Math.log2 ? Math.log2 : (x) => (Math.log(x) / Math.log(2));
+
+// count the number of bits it would take to represent a number
+// we used to do this with log2 but BigInt does not support builtin math
+// Math.ceil(log2(x));
+export const countBits = (x) => x.toString(2).length;
+// count the number of whole bytes it would take to represent a number
+export const countBytes = (x) => Math.ceil(countBits(x) / 8);
 export const padStart = (b, len, str = ' ') => (str.repeat(len) + b.toString()).slice(-len);
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
 export const toUint8 = function(bytes) {
@@ -38,29 +47,93 @@ export const toBinaryString = function(bytes) {
     return acc + padStart(b.toString(2), 8, '0');
   }, '');
 };
+const BigInt = window.BigInt || Number;
 
-export const bytesToNumber = function(bytes, signed) {
-  let number = parseInt(toHexString(bytes), 16);
+const BYTE_TABLE = [
+  BigInt('0x1'),
+  BigInt('0x100'),
+  BigInt('0x10000'),
+  BigInt('0x1000000'),
+  BigInt('0x100000000'),
+  BigInt('0x10000000000'),
+  BigInt('0x1000000000000'),
+  BigInt('0x100000000000000'),
+  BigInt('0x10000000000000000')
+];
+
+export const ENDIANNESS = (function() {
+  const a = new Uint16Array([0xFFCC]);
+  const b = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+
+  if (b[0] === 0xFF) {
+    return 'big';
+  }
+
+  if (b[0] === 0xCC) {
+    return 'little';
+  }
+
+  return 'unknown';
+})();
+
+export const IS_BIG_ENDIAN = ENDIANNESS === 'big';
+export const IS_LITTLE_ENDIAN = ENDIANNESS === 'little';
+
+export const bytesToNumber = function(bytes, {signed = false, le = false} = {}) {
+  bytes = toUint8(bytes);
+  let number = Array.prototype[(le ? 'reduce' : 'reduceRight')].call(bytes, function(total, byte, i) {
+    const exponent = le ? i : Math.abs(i + 1 - bytes.length);
+
+    return total + (BigInt(byte) * BYTE_TABLE[exponent]);
+  }, BigInt(0));
 
   if (signed) {
-    number -= Math.pow(2, bytes.length * 7 - 1) - 1;
+    const max = BYTE_TABLE[bytes.length] / BigInt(2) - BigInt(1);
+
+    number = BigInt(number);
+
+    if (number > max) {
+      number -= max;
+      number -= max;
+      number -= BigInt(2);
+    }
   }
 
-  return number;
+  return Number(number);
 };
 
-export const numberToBytes = function(number) {
+export const numberToBytes = function(number, {le = false} = {}) {
   // eslint-disable-next-line
-  if (typeof number !== 'number' || (typeof number === 'number' && number !== number)) {
-    return [0x00];
+  if ((typeof number !== 'bigint' && typeof number !== 'number') || (typeof number === 'number' && number !== number)) {
+    number = 0;
   }
-  return number.toString(16).match(/.{1,2}/g).map((v) => parseInt(v, 16));
+
+  number = BigInt(number);
+
+  const byteCount = countBytes(number);
+
+  const bytes = new Uint8Array(new ArrayBuffer(byteCount));
+
+  for (let i = 0; i < byteCount; i++) {
+    const byteIndex = le ? i : Math.abs(i + 1 - bytes.length);
+
+    bytes[byteIndex] = Number((number / BYTE_TABLE[i]) & BigInt(0xFF));
+
+    if (number < 0) {
+      bytes[byteIndex] = Math.abs(~bytes[byteIndex]);
+      bytes[byteIndex] -= i === 0 ? 1 : 2;
+    }
+  }
+
+  return bytes;
 };
 export const bytesToString = (bytes) => {
   if (!bytes) {
     return '';
   }
 
+  // TODO: should toUint8 handle cases where we only have 8 bytes
+  // but report more since this is a Uint16+ Array?
   bytes = Array.prototype.slice.call(bytes);
 
   const string = String.fromCharCode.apply(null, toUint8(bytes));
@@ -75,23 +148,28 @@ export const bytesToString = (bytes) => {
   return string;
 };
 
-export const stringToBytes = (string, stringIsBytes = false) => {
-  const bytes = [];
-
+export const stringToBytes = (string, stringIsBytes) => {
   if (typeof string !== 'string' && string && typeof string.toString === 'function') {
     string = string.toString();
   }
 
   if (typeof string !== 'string') {
-    return bytes;
+    return new Uint8Array();
   }
 
   // If the string already is bytes, we don't have to do this
+  // otherwise we do this so that we split multi length characters
+  // into individual bytes
   if (!stringIsBytes) {
     string = unescape(encodeURIComponent(string));
   }
 
-  return string.split('').map((s) => s.charCodeAt(0) & 0xFF);
+  const view = new Uint8Array(string.length);
+
+  for (let i = 0; i < string.length; i++) {
+    view[i] = string.charCodeAt(i);
+  }
+  return view;
 };
 
 export const concatTypedArrays = (...buffers) => {

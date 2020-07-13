@@ -94,7 +94,7 @@ const getvint = function(bytes, offset, removeLength = true, signed = false) {
 
   return {
     length,
-    value: bytesToNumber(valueBytes, signed),
+    value: bytesToNumber(valueBytes, {signed}),
     bytes: valueBytes
   };
 };
