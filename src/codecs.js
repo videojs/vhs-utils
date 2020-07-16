@@ -91,9 +91,11 @@ export const mapLegacyAvcCodecs = function(codecString) {
 export const parseCodecs = function(codecString = '') {
   const codecs = codecString.split(',');
   const result = {};
+  const unknown = [];
 
   codecs.forEach(function(codec) {
     codec = codec.trim();
+    let codecType;
 
     ['video', 'audio'].forEach(function(name) {
       const match = regexs[name].exec(codec.toLowerCase());
@@ -101,6 +103,7 @@ export const parseCodecs = function(codecString = '') {
       if (!match || match.length <= 1) {
         return;
       }
+      codecType = name;
 
       // maintain codec case
       const type = codec.substring(0, match[1].length);
@@ -108,6 +111,19 @@ export const parseCodecs = function(codecString = '') {
 
       result[name] = {type, details};
     });
+
+    if (!codecType) {
+      unknown.push(codec);
+    }
+
+  });
+
+  unknown.forEach(function(codec) {
+    if (!result.video) {
+      result.video = {type: codec, details: ''};
+    } else if (!result.audio) {
+      result.audio = {type: codec, details: ''};
+    }
   });
 
   return result;
