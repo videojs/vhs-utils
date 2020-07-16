@@ -119,6 +119,7 @@ export const parseCodecs = function(codecString = '') {
     }
   });
 
+  // TODO: Report that a codec could not be identified somehow
   // Set unknown codecs to either the "missing" audio or video codec.
   // If we have all unknown codecs the first one will always be
   // video and the second one will always be audio.
