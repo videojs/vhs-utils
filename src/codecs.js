@@ -91,9 +91,11 @@ export const mapLegacyAvcCodecs = function(codecString) {
 export const parseCodecs = function(codecString = '') {
   const codecs = codecString.split(',');
   const result = {};
+  const unknown = [];
 
   codecs.forEach(function(codec) {
     codec = codec.trim();
+    let codecType;
 
     ['video', 'audio'].forEach(function(name) {
       const match = regexs[name].exec(codec.toLowerCase());
@@ -101,6 +103,7 @@ export const parseCodecs = function(codecString = '') {
       if (!match || match.length <= 1) {
         return;
       }
+      codecType = name;
 
       // maintain codec case
       const type = codec.substring(0, match[1].length);
@@ -108,6 +111,24 @@ export const parseCodecs = function(codecString = '') {
 
       result[name] = {type, details};
     });
+
+    // codec type is not audio or video
+    // try to deremine its type after all the other codecs
+    if (!codecType) {
+      unknown.push(codec);
+    }
+  });
+
+  // TODO: Report that a codec could not be identified somehow
+  // Set unknown codecs to either the "missing" audio or video codec.
+  // If we have all unknown codecs the first one will always be
+  // video and the second one will always be audio.
+  unknown.forEach(function(codec) {
+    if (!result.video) {
+      result.video = {type: codec, details: ''};
+    } else if (!result.audio) {
+      result.audio = {type: codec, details: ''};
+    }
   });
 
   return result;
