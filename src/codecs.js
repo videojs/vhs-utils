@@ -112,12 +112,16 @@ export const parseCodecs = function(codecString = '') {
       result[name] = {type, details};
     });
 
+    // codec type is not audio or video
+    // try to deremine its type after all the other codecs
     if (!codecType) {
       unknown.push(codec);
     }
-
   });
 
+  // Set unknown codecs to either the "missing" audio or video codec.
+  // If we have all unknown codecs the first one will always be
+  // video and the second one will always be audio.
   unknown.forEach(function(codec) {
     if (!result.video) {
       result.video = {type: codec, details: ''};
