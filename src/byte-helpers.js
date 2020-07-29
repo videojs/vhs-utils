@@ -222,11 +222,30 @@ export const bytesMatch = (a, b, {offset = 0, mask = []} = {}) => {
   a = toUint8(a);
   b = toUint8(b);
 
+  // ie 11 does not support uint8 every
+  const fn = b.every ? b.every : Array.prototype.every;
+
   return b.length &&
     a.length - offset >= b.length &&
-    b.every((bByte, i) => {
+    // ie 11 doesn't support every on uin8
+    fn.call(b, (bByte, i) => {
       const aByte = (mask[i] ? (mask[i] & a[offset + i]) : a[offset + i]);
 
       return bByte === aByte;
     });
+};
+
+export const sliceBytes = function(src, start, end) {
+  if (Uint8Array.prototype.slice) {
+    return Uint8Array.prototype.slice.call(src, start, end);
+  }
+  return new Uint8Array(Array.prototype.slice.call(src, start, end));
+};
+
+export const reverseBytes = function(src) {
+  if (src.reverse) {
+    return src.reverse();
+  }
+
+  return Array.prototype.reverse.call(src);
 };
