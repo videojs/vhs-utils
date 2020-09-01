@@ -4,6 +4,15 @@ export const NAL_TYPE_ONE = toUint8([0x00, 0x00, 0x00, 0x01]);
 export const NAL_TYPE_TWO = toUint8([0x00, 0x00, 0x01]);
 export const EMULATION_PREVENTION = toUint8([0x00, 0x00, 0x03]);
 
+/**
+ * Expunge any "Emulation Prevention" bytes from a "Raw Byte
+ * Sequence Payload"
+ *
+ * @param data {Uint8Array} the bytes of a RBSP from a NAL
+ * unit
+ * @return {Uint8Array} the RBSP without any Emulation
+ * Prevention Bytes
+ */
 export const discardEmulationPreventionBytes = function(bytes) {
   const positions = [];
 

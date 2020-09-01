@@ -81,7 +81,11 @@ export const IS_LITTLE_ENDIAN = ENDIANNESS === 'little';
 
 export const bytesToNumber = function(bytes, {signed = false, le = false} = {}) {
   bytes = toUint8(bytes);
-  let number = Array.prototype[(le ? 'reduce' : 'reduceRight')].call(bytes, function(total, byte, i) {
+
+  const fn = le ? 'reduce' : 'reduceRight';
+  const obj = bytes[fn] ? bytes[fn] : Array.prototype[fn];
+
+  let number = obj.call(bytes, function(total, byte, i) {
     const exponent = le ? i : Math.abs(i + 1 - bytes.length);
 
     return total + (BigInt(byte) * BYTE_TABLE[exponent]);
