@@ -16,10 +16,10 @@ export const toUint8 = function(bytes) {
   }
 
   if (!Array.isArray(bytes) && !isTypedArray(bytes) && !(bytes instanceof ArrayBuffer)) {
-    // any non-number or NaN leads to emtpy uint8array
+    // any non-number or NaN leads to empty uint8array
     // eslint-disable-next-line
     if (typeof bytes !== 'number' || (typeof bytes === 'number' && bytes !== bytes)) {
-      bytes = [];
+      bytes = undefined;
     } else {
       bytes = [bytes];
     }

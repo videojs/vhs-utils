@@ -41,7 +41,7 @@ export const getAv1Codec = function(bytes) {
 
 export const getAvcCodec = function(bytes) {
   const profileId = toHexString(bytes[1]);
-  const constraintFlags = toHexString(bytes[2] & 0xF0);
+  const constraintFlags = toHexString(bytes[2] & 0xFC);
   const levelId = toHexString(bytes[3]);
 
   return `${profileId}${constraintFlags}${levelId}`;
