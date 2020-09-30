@@ -13,11 +13,16 @@
     "defaults",
     "ie 11"
   ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/es/index.js",
+  "browser": "./dist/vhs-utils.js",
   "scripts": {
     "build": "npm-run-all -s clean -p build:*",
     "build-prod": "cross-env-shell NO_TEST_BUNDLE=1 'npm run build'",
     "build-test": "cross-env-shell TEST_BUNDLE_ONLY=1 'npm run build'",
-    "build:js": "rollup -c scripts/rollup.config.js",
+    "build:browser": "rollup -c scripts/rollup.config.js",
+    "build:cjs": "babel-config-cjs -d ./dist/cjs ./src",
+    "build:es": "babel-config-es -d ./dist/es ./src",
     "clean": "shx rm -rf ./dist ./test/dist && shx mkdir -p ./dist ./test/dist",
     "lint": "vjsstandard",
     "server": "karma start scripts/karma.conf.js --singleRun=false --auto-watch",
@@ -30,7 +35,9 @@
     "preversion": "npm test",
     "version": "is-prerelease || npm run update-changelog && git add CHANGELOG.md",
     "watch": "npm-run-all -p watch:*",
-    "watch:js": "npm run build:js -- -w",
+    "watch:browser": "npm run build:js -- -w",
+    "watch:cjs": "npm run build:cjs -- -w",
+    "watch:es": "npm run build:es -- -w",
     "prepublishOnly": "npm-run-all build-prod && vjsverify --verbose --skip-es-check"
   },
   "engines": {
@@ -75,11 +82,13 @@
     ]
   },
   "dependencies": {
+    "@babel/runtime": "^7.5.5",
     "global": "^4.3.2",
-    "url-toolkit": "^2.1.6",
-    "@babel/runtime": "^7.5.5"
+    "url-toolkit": "^2.1.6"
   },
   "devDependencies": {
+    "@videojs/babel-config": "^0.1.1",
+    "@babel/cli": "^7.11.6",
     "@videojs/generator-helpers": "~1.2.0",
     "karma": "^5.0.0",
     "rollup": "^1.12.0",
