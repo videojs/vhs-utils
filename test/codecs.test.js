@@ -160,39 +160,6 @@ QUnit.test('parses video and audio codec with mixed case', function(assert) {
   );
 });
 
-QUnit.test('parses two unknown codec', function(assert) {
-  assert.deepEqual(
-    parseCodecs('fake.codec, other-fake'),
-    {
-      video: {type: 'fake.codec', details: ''},
-      audio: {type: 'other-fake', details: ''}
-    },
-    'parsed faked codecs as video/audio'
-  );
-});
-
-QUnit.test('parses on unknown video codec with a known audio', function(assert) {
-  assert.deepEqual(
-    parseCodecs('fake.codec, mp4a.40.2'),
-    {
-      video: {type: 'fake.codec', details: ''},
-      audio: {type: 'mp4a', details: '.40.2'}
-    },
-    'parsed faked video codec'
-  );
-});
-
-QUnit.test('parses on unknown audio codec with a known video', function(assert) {
-  assert.deepEqual(
-    parseCodecs('avc1.42001e, other-fake'),
-    {
-      video: {type: 'avc1', details: '.42001e'},
-      audio: {type: 'other-fake', details: ''}
-    },
-    'parsed faked audio codec'
-  );
-});
-
 QUnit.module('codecsFromDefault');
 
 QUnit.test('returns falsey when no audio group ID', function(assert) {
