@@ -53,8 +53,29 @@ QUnit.test('should identify known types', function(assert) {
     const dataWithId3 = new Uint8Array([].concat(id3Data).concat(testData[type]));
     const dataWithId3Footer = new Uint8Array([].concat(id3DataWithFooter).concat(testData[type]));
 
+    const recursiveDataWithId3 = new Uint8Array([]
+      .concat(id3Data)
+      .concat(id3Data)
+      .concat(id3Data)
+      .concat(testData[type]));
+    const recursiveDataWithId3Footer = new Uint8Array([]
+      .concat(id3DataWithFooter)
+      .concat(id3DataWithFooter)
+      .concat(id3DataWithFooter)
+      .concat(testData[type]));
+
+    const differentId3Sections = new Uint8Array([]
+      .concat(id3DataWithFooter)
+      .concat(id3Data)
+      .concat(id3DataWithFooter)
+      .concat(id3Data)
+      .concat(testData[type]));
+
     assert.equal(detectContainerForBytes(dataWithId3), type, `id3 skipped and ${type} detected`);
     assert.equal(detectContainerForBytes(dataWithId3Footer), type, `id3 + footer skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(recursiveDataWithId3), type, `id3 x3 skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(recursiveDataWithId3Footer), type, `id3 + footer x3 skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(differentId3Sections), type, `id3 with/without footer skipped and ${type} detected`);
   });
 
   const notTs = []
