@@ -1,23 +1,28 @@
 import {bytesToString, toUint8} from './byte-helpers.js';
 
+export const id3Size = function(bytes, offset = 0) {
+  const returnSize = (bytes[offset + 6] << 21) |
+    (bytes[offset + 7] << 14) |
+    (bytes[offset + 8] << 7) |
+    (bytes[offset + 9]);
+  const flags = bytes[offset + 5];
+  const footerPresent = (flags & 16) >> 4;
+
+  if (footerPresent) {
+    return returnSize + 20;
+  }
+
+  return returnSize + 10;
+};
+
 export const getId3Offset = function(bytes, offset = 0) {
   bytes = toUint8(bytes);
 
   if ((bytes.length - offset) < 10 || bytesToString(bytes.subarray(offset, offset + 3)) !== 'ID3') {
     return offset;
   }
-  const returnSize = (bytes[offset + 6] << 21) |
-                     (bytes[offset + 7] << 14) |
-                     (bytes[offset + 8] << 7) |
-                     (bytes[offset + 9]);
-  const flags = bytes[offset + 5];
-  const footerPresent = (flags & 16) >> 4;
 
-  offset += returnSize + 10;
-
-  if (footerPresent) {
-    offset += 10;
-  }
+  offset += id3Size(bytes, offset);
 
   // recursive check for id3 tags as some files
   // have multiple ID3 tag sections even though
