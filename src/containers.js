@@ -1,22 +1,35 @@
 import {bytesToString, toUint8} from './byte-helpers.js';
 
-export const getId3Offset = function(bytes) {
+export const id3Size = function(bytes, offset = 0) {
   bytes = toUint8(bytes);
 
-  if (bytes.length < 10 || bytesToString(bytes.subarray(0, 3)) !== 'ID3') {
-    return 0;
-  }
-  const returnSize = (bytes[6] << 21) |
-                     (bytes[7] << 14) |
-                     (bytes[8] << 7) |
-                     (bytes[9]);
-  const flags = bytes[5];
+  const returnSize = (bytes[offset + 6] << 21) |
+    (bytes[offset + 7] << 14) |
+    (bytes[offset + 8] << 7) |
+    (bytes[offset + 9]);
+  const flags = bytes[offset + 5];
   const footerPresent = (flags & 16) >> 4;
 
   if (footerPresent) {
     return returnSize + 20;
   }
+
   return returnSize + 10;
+};
+
+export const getId3Offset = function(bytes, offset = 0) {
+  bytes = toUint8(bytes);
+
+  if ((bytes.length - offset) < 10 || bytesToString(bytes.subarray(offset, offset + 3)) !== 'ID3') {
+    return offset;
+  }
+
+  offset += id3Size(bytes, offset);
+
+  // recursive check for id3 tags as some files
+  // have multiple ID3 tag sections even though
+  // they should not.
+  return getId3Offset(bytes, offset);
 };
 
 export const isLikely = {
