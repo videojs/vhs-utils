@@ -1,6 +1,8 @@
 import {bytesToString, toUint8} from './byte-helpers.js';
 
 export const id3Size = function(bytes, offset = 0) {
+  bytes = toUint8(bytes);
+
   const returnSize = (bytes[offset + 6] << 21) |
     (bytes[offset + 7] << 14) |
     (bytes[offset + 8] << 7) |
