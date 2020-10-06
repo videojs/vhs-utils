@@ -13,7 +13,7 @@ const filler = (size) => {
 };
 
 const otherMp4Data = concatTypedArrays([0x00, 0x00, 0x00, 0x00], stringToBytes('stypiso'));
-const id3Data = concatTypedArrays(
+const id3Data = Array.prototype.slice.call(concatTypedArrays(
   stringToBytes('ID3'),
   // id3 header is 10 bytes without footer
   // 10th byte is length 0x23 or 35 in decimal
@@ -21,9 +21,9 @@ const id3Data = concatTypedArrays(
   [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23],
   // add in the id3 content
   filler(35)
-);
+));
 
-const id3DataWithFooter = concatTypedArrays(
+const id3DataWithFooter = Array.prototype.slice.call(concatTypedArrays(
   stringToBytes('ID3'),
   // id3 header is 20 bytes with footer
   // "we have a footer" is the sixth byte
@@ -32,7 +32,7 @@ const id3DataWithFooter = concatTypedArrays(
   [0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x23],
   // add in the id3 content
   filler(45)
-);
+));
 
 const testData = {
   // EBML tag + dataSize
@@ -105,9 +105,15 @@ QUnit.test('should identify known types', function(assert) {
   ['mp3', 'aac', 'flac', 'ac3'].forEach(function(type) {
     const dataWithId3 = concatTypedArrays(id3Data, testData[type]);
     const dataWithId3Footer = concatTypedArrays(id3DataWithFooter, testData[type]);
+    const multipleId3 = concatTypedArrays(id3Data, id3Data, id3Data, testData[type]);
+    const multipleId3Footer = concatTypedArrays(id3DataWithFooter, id3DataWithFooter, id3DataWithFooter, testData[type]);
+    const multipleId3Mixed = concatTypedArrays(id3DataWithFooter, id3Data, id3DataWithFooter, id3Data, testData[type]);
 
     assert.equal(detectContainerForBytes(dataWithId3), type, `id3 skipped and ${type} detected`);
     assert.equal(detectContainerForBytes(dataWithId3Footer), type, `id3 + footer skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(multipleId3), type, `multiple id3 skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(multipleId3Footer), type, `multiple id3 + footer skipped and ${type} detected`);
+    assert.equal(detectContainerForBytes(multipleId3Mixed), type, `multiple id3 with w/o footer skipped and ${type} detected`);
   });
 
   const notTs = concatTypedArrays(testData.ts, filler(188));
