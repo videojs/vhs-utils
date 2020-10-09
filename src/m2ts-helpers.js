@@ -93,5 +93,7 @@ export const parseTs = function(bytes, maxPes = Infinity) {
     endIndex += 188;
   }
 
+  pmt.streams = pmt.steams || {};
+
   return pmt;
 };
