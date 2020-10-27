@@ -2,6 +2,10 @@
   "name": "@videojs/vhs-utils",
   "version": "2.2.1",
   "description": "Objects and functions shared throughtout @videojs/http-streaming code",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:videojs/vhs-utils.git"
+  },
   "generator-videojs-plugin": {
     "version": "7.7.1"
   },
