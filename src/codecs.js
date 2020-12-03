@@ -2,18 +2,26 @@ import window from 'global/window';
 
 const regexs = {
   // to determine mime types
-  mp4: /^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v)/,
+  mp4: /^(av0?1|avc0?[1234]|vp0?9|flac|opus|mp3|mp4a|mp4v|stpp.ttml.im1t)/,
   webm: /^(vp0?[89]|av0?1|opus|vorbis)/,
   ogg: /^(vp0?[89]|theora|flac|opus|vorbis)/,
 
   // to determine if a codec is audio or video
   video: /^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)/,
   audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)/,
+  text: /^(stpp.ttml.im1t)/,
 
   // mux.js support regex
   muxerVideo: /^(avc0?1)/,
-  muxerAudio: /^(mp4a)/
+  muxerAudio: /^(mp4a)/,
+  // match nothing as muxer does not support text right now.
+  // there cannot never be a character before the start of a string
+  // so this matches nothing.
+  muxerText: /a^/
 };
+
+const mediaTypes = ['video', 'audio', 'text'];
+const upperMediaTypes = ['Video', 'Audio', 'Text'];
 
 /**
  * Replace the old apple-style `avc1.<dd>.<dd>` codec string with the standard
@@ -91,16 +99,19 @@ export const mapLegacyAvcCodecs = function(codecString) {
 export const parseCodecs = function(codecString = '') {
   const codecs = codecString.split(',');
   const result = {};
+  const unknown = [];
 
   codecs.forEach(function(codec) {
     codec = codec.trim();
+    let codecType;
 
-    ['video', 'audio'].forEach(function(name) {
+    mediaTypes.forEach(function(name) {
       const match = regexs[name].exec(codec.toLowerCase());
 
       if (!match || match.length <= 1) {
         return;
       }
+      codecType = name;
 
       // maintain codec case
       const type = codec.substring(0, match[1].length);
@@ -108,7 +119,15 @@ export const parseCodecs = function(codecString = '') {
 
       result[name] = {type, details};
     });
+
+    if (!codecType) {
+      unknown.push(codec);
+    }
   });
+
+  if (unknown.length) {
+    result.unknown = unknown;
+  }
 
   return result;
 };
@@ -149,6 +168,7 @@ export const codecsFromDefault = (master, audioGroupId) => {
 
 export const isVideoCodec = (codec = '') => regexs.video.test(codec.trim().toLowerCase());
 export const isAudioCodec = (codec = '') => regexs.audio.test(codec.trim().toLowerCase());
+export const isTextCodec = (codec = '') => regexs.text.test(codec.trim().toLowerCase());
 
 export const getMimeForCodec = (codecString) => {
   if (!codecString || typeof codecString !== 'string') {
@@ -166,6 +186,9 @@ export const getMimeForCodec = (codecString) => {
   // audio
   if (codecs.length === 1 && isAudioCodec(codecs[0])) {
     type = 'audio';
+  } else if (codecs.length === 1 && isTextCodec(codecs[0])) {
+    // text uses application/<container> for now
+    type = 'application';
   }
 
   // default the container to mp4
@@ -191,7 +214,16 @@ export const browserSupportsCodec = (codecString = '') => window.MediaSource &&
 export const muxerSupportsCodec = (codecString = '') => codecString.toLowerCase().split(',').every((codec) => {
   codec = codec.trim();
 
-  return regexs.muxerVideo.test(codec) || regexs.muxerAudio.test(codec);
+  // any match is supported.
+  for (let i = 0; i < upperMediaTypes.length; i++) {
+    const type = upperMediaTypes[i];
+
+    if (regexs[`muxer${type}`].test(codec)) {
+      return true;
+    }
+  }
+
+  return false;
 });
 
 export const DEFAULT_AUDIO_CODEC = 'mp4a.40.2';
