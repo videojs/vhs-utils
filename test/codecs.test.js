@@ -125,7 +125,7 @@ QUnit.module('parseCodecs');
 QUnit.test('parses text only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('stpp.ttml.im1t'),
-    [{mediaType: 'text', type: 'stpp.ttml.im1t', details: ''}],
+    {text: {type: 'stpp.ttml.im1t', details: ''}},
     'parsed text only codec string'
   );
 });
@@ -133,7 +133,7 @@ QUnit.test('parses text only codec string', function(assert) {
 QUnit.test('parses video only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e'),
-    [{mediaType: 'video', type: 'avc1', details: '.42001e'}],
+    {video: {type: 'avc1', details: '.42001e'}},
     'parsed video only codec string'
   );
 });
@@ -141,7 +141,7 @@ QUnit.test('parses video only codec string', function(assert) {
 QUnit.test('parses audio only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('mp4a.40.2'),
-    [{mediaType: 'audio', type: 'mp4a', details: '.40.2'}],
+    {audio: {type: 'mp4a', details: '.40.2'}},
     'parsed audio only codec string'
   );
 });
@@ -149,11 +149,11 @@ QUnit.test('parses audio only codec string', function(assert) {
 QUnit.test('parses video, audio, and text codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e, mp4a.40.2, stpp.ttml.im1t'),
-    [
-      {mediaType: 'video', type: 'avc1', details: '.42001e'},
-      {mediaType: 'audio', type: 'mp4a', details: '.40.2'},
-      {mediaType: 'text', type: 'stpp.ttml.im1t', details: ''}
-    ],
+    {
+      video: {type: 'avc1', details: '.42001e'},
+      audio: {type: 'mp4a', details: '.40.2'},
+      text: {type: 'stpp.ttml.im1t', details: ''}
+    },
     'parsed video, audio, and text codec string'
   );
 });
@@ -161,11 +161,11 @@ QUnit.test('parses video, audio, and text codec string', function(assert) {
 QUnit.test('parses video, audio, and text codec with mixed case', function(assert) {
   assert.deepEqual(
     parseCodecs('AvC1.42001E, Mp4A.40.E, stpp.TTML.im1T'),
-    [
-      {mediaType: 'video', type: 'AvC1', details: '.42001E'},
-      {mediaType: 'audio', type: 'Mp4A', details: '.40.E'},
-      {mediaType: 'text', type: 'stpp.TTML.im1T', details: ''}
-    ],
+    {
+      video: {type: 'AvC1', details: '.42001E'},
+      audio: {type: 'Mp4A', details: '.40.E'},
+      text: {type: 'stpp.TTML.im1T', details: ''}
+    },
     'parsed video, audio, and text codec string'
   );
 });
@@ -173,10 +173,7 @@ QUnit.test('parses video, audio, and text codec with mixed case', function(asser
 QUnit.test('parses two unknown codec', function(assert) {
   assert.deepEqual(
     parseCodecs('fake.codec, other-fake'),
-    [
-      {mediaType: 'unknown', type: 'fake.codec', details: ''},
-      {mediaType: 'unknown', type: 'other-fake', details: ''}
-    ],
+    {unknown: ['fake.codec', 'other-fake']},
     'parsed faked codecs as video/audio'
   );
 });
@@ -184,21 +181,21 @@ QUnit.test('parses two unknown codec', function(assert) {
 QUnit.test('parses an unknown codec with a known audio', function(assert) {
   assert.deepEqual(
     parseCodecs('fake.codec, mp4a.40.2'),
-    [
-      {mediaType: 'unknown', type: 'fake.codec', details: ''},
-      {mediaType: 'audio', type: 'mp4a', details: '.40.2'}
-    ],
-    'parsed audio and unknwon'
+    {
+      audio: {type: 'mp4a', details: '.40.2'},
+      unknown: ['fake.codec']
+    },
+    'parsed faked video codec'
   );
 });
 
 QUnit.test('parses an unknown codec with a known video', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e, other-fake'),
-    [
-      {mediaType: 'video', type: 'avc1', details: '.42001e'},
-      {mediaType: 'unknown', type: 'other-fake', details: ''}
-    ],
+    {
+      video: {type: 'avc1', details: '.42001e'},
+      unknown: ['other-fake']
+    },
     'parsed video and unknown'
   );
 });
@@ -206,10 +203,10 @@ QUnit.test('parses an unknown codec with a known video', function(assert) {
 QUnit.test('parses an unknown codec with a known text', function(assert) {
   assert.deepEqual(
     parseCodecs('stpp.ttml.im1t, other-fake'),
-    [
-      {mediaType: 'text', type: 'stpp.ttml.im1t', details: ''},
-      {mediaType: 'unknown', type: 'other-fake', details: ''}
-    ],
+    {
+      text: {type: 'stpp.ttml.im1t', details: ''},
+      unknown: ['other-fake']
+    },
     'parsed text and unknown'
   );
 });
@@ -217,13 +214,13 @@ QUnit.test('parses an unknown codec with a known text', function(assert) {
 QUnit.test('parses an unknown codec with a known audio/video/text', function(assert) {
   assert.deepEqual(
     parseCodecs('fake.codec, avc1.42001e, mp4a.40.2, stpp.ttml.im1t'),
-    [
-      {mediaType: 'unknown', type: 'fake.codec', details: ''},
-      {mediaType: 'video', type: 'avc1', details: '.42001e'},
-      {mediaType: 'audio', type: 'mp4a', details: '.40.2'},
-      {mediaType: 'text', type: 'stpp.ttml.im1t', details: ''}
-    ],
-    'parsed video/audio/text and unknown codecs'
+    {
+      audio: {type: 'mp4a', details: '.40.2'},
+      video: {type: 'avc1', details: '.42001e'},
+      text: {type: 'stpp.ttml.im1t', details: ''},
+      unknown: ['fake.codec']
+    },
+    'parsed faked video codec'
   );
 });
 
@@ -297,7 +294,7 @@ QUnit.test('returns falsey when no default for audio group', function(assert) {
   );
 });
 
-QUnit.test('returns parsed audio codecs for default in audio group', function(assert) {
+QUnit.test('returns audio profile for default in audio group', function(assert) {
   assert.deepEqual(
     codecsFromDefault(
       {
@@ -307,13 +304,13 @@ QUnit.test('returns parsed audio codecs for default in audio group', function(as
               en: {
                 default: false,
                 playlists: [{
-                  attributes: { CODECS: 'mp4a.40.2, mp4a.40.20' }
+                  attributes: { CODECS: 'mp4a.40.2' }
                 }]
               },
               es: {
                 default: true,
                 playlists: [{
-                  attributes: { CODECS: 'mp4a.40.5, mp4a.40.7' }
+                  attributes: { CODECS: 'mp4a.40.5' }
                 }]
               }
             }
@@ -322,10 +319,7 @@ QUnit.test('returns parsed audio codecs for default in audio group', function(as
       },
       'au1'
     ),
-    [
-      {mediaType: 'audio', type: 'mp4a', details: '.40.5'},
-      {mediaType: 'audio', type: 'mp4a', details: '.40.7'}
-    ],
+    {audio: {type: 'mp4a', details: '.40.5'}},
     'returned parsed codec audio profile'
   );
 });
