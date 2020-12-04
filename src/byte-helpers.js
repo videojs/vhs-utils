@@ -2,7 +2,7 @@ export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
 export const toUint8 = (bytes) => (bytes instanceof Uint8Array) ?
   bytes :
   new Uint8Array(
-    bytes && bytes.buffer || bytes,
+    bytes && bytes.buffer || bytes || 0,
     bytes && bytes.byteOffset || 0,
     bytes && bytes.byteLength || 0
   );
