@@ -122,6 +122,14 @@ QUnit.test('translates legacy codecs', function(assert) {
 
 QUnit.module('parseCodecs');
 
+QUnit.test('parses text only codec string', function(assert) {
+  assert.deepEqual(
+    parseCodecs('stpp.ttml.im1t'),
+    {text: {type: 'stpp.ttml.im1t', details: ''}},
+    'parsed text only codec string'
+  );
+});
+
 QUnit.test('parses video only codec string', function(assert) {
   assert.deepEqual(
     parseCodecs('avc1.42001e'),
@@ -138,25 +146,81 @@ QUnit.test('parses audio only codec string', function(assert) {
   );
 });
 
-QUnit.test('parses video and audio codec string', function(assert) {
+QUnit.test('parses video, audio, and text codec string', function(assert) {
   assert.deepEqual(
-    parseCodecs('avc1.42001e, mp4a.40.2'),
+    parseCodecs('avc1.42001e, mp4a.40.2, stpp.ttml.im1t'),
     {
       video: {type: 'avc1', details: '.42001e'},
-      audio: {type: 'mp4a', details: '.40.2'}
+      audio: {type: 'mp4a', details: '.40.2'},
+      text: {type: 'stpp.ttml.im1t', details: ''}
     },
-    'parsed video and audio codec string'
+    'parsed video, audio, and text codec string'
   );
 });
 
-QUnit.test('parses video and audio codec with mixed case', function(assert) {
+QUnit.test('parses video, audio, and text codec with mixed case', function(assert) {
   assert.deepEqual(
-    parseCodecs('AvC1.42001E, Mp4A.40.E'),
+    parseCodecs('AvC1.42001E, Mp4A.40.E, stpp.TTML.im1T'),
     {
       video: {type: 'AvC1', details: '.42001E'},
-      audio: {type: 'Mp4A', details: '.40.E'}
+      audio: {type: 'Mp4A', details: '.40.E'},
+      text: {type: 'stpp.TTML.im1T', details: ''}
     },
-    'parsed video and audio codec string'
+    'parsed video, audio, and text codec string'
+  );
+});
+
+QUnit.test('parses two unknown codec', function(assert) {
+  assert.deepEqual(
+    parseCodecs('fake.codec, other-fake'),
+    {unknown: ['fake.codec', 'other-fake']},
+    'parsed faked codecs as video/audio'
+  );
+});
+
+QUnit.test('parses an unknown codec with a known audio', function(assert) {
+  assert.deepEqual(
+    parseCodecs('fake.codec, mp4a.40.2'),
+    {
+      audio: {type: 'mp4a', details: '.40.2'},
+      unknown: ['fake.codec']
+    },
+    'parsed faked video codec'
+  );
+});
+
+QUnit.test('parses an unknown codec with a known video', function(assert) {
+  assert.deepEqual(
+    parseCodecs('avc1.42001e, other-fake'),
+    {
+      video: {type: 'avc1', details: '.42001e'},
+      unknown: ['other-fake']
+    },
+    'parsed video and unknown'
+  );
+});
+
+QUnit.test('parses an unknown codec with a known text', function(assert) {
+  assert.deepEqual(
+    parseCodecs('stpp.ttml.im1t, other-fake'),
+    {
+      text: {type: 'stpp.ttml.im1t', details: ''},
+      unknown: ['other-fake']
+    },
+    'parsed text and unknown'
+  );
+});
+
+QUnit.test('parses an unknown codec with a known audio/video/text', function(assert) {
+  assert.deepEqual(
+    parseCodecs('fake.codec, avc1.42001e, mp4a.40.2, stpp.ttml.im1t'),
+    {
+      audio: {type: 'mp4a', details: '.40.2'},
+      video: {type: 'avc1', details: '.42001e'},
+      text: {type: 'stpp.ttml.im1t', details: ''},
+      unknown: ['fake.codec']
+    },
+    'parsed faked video codec'
   );
 });
 
@@ -398,4 +462,5 @@ QUnit.test('works as expected', function(assert) {
   assert.notOk(getMimeForCodec(), 'invalid codec returns undefined');
 
   assert.equal(getMimeForCodec('Mp4A.40.2,AvC1.42001E'), 'video/mp4;codecs="Mp4A.40.2,AvC1.42001E"', 'case is preserved');
+  assert.equal(getMimeForCodec('stpp.ttml.im1t'), 'application/mp4;codecs="stpp.ttml.im1t"', 'text is parsed');
 });

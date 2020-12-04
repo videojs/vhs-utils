@@ -10,6 +10,7 @@ export const countBits = (x) => x.toString(2).length;
 export const countBytes = (x) => Math.ceil(countBits(x) / 8);
 export const padStart = (b, len, str = ' ') => (str.repeat(len) + b.toString()).slice(-len);
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
+
 export const toUint8 = function(bytes) {
   if (bytes instanceof Uint8Array) {
     return bytes;
@@ -19,7 +20,7 @@ export const toUint8 = function(bytes) {
     // any non-number or NaN leads to empty uint8array
     // eslint-disable-next-line
     if (typeof bytes !== 'number' || (typeof bytes === 'number' && bytes !== bytes)) {
-      bytes = undefined;
+      bytes = 0;
     } else {
       bytes = [bytes];
     }

@@ -1,3 +1,26 @@
+<a name="2.3.0"></a>
+# [2.3.0](https://github.com/videojs/vhs-utils/compare/v2.2.1...v2.3.0) (2020-12-03)
+
+### Features
+
+* parse unknown and text codecs ([#19](https://github.com/videojs/vhs-utils/issues/19)) ([9c90076](https://github.com/videojs/vhs-utils/commit/9c90076))
+
+### Chores
+
+* Add repository info to package.json ([#22](https://github.com/videojs/vhs-utils/issues/22)) ([a22ae78](https://github.com/videojs/vhs-utils/commit/a22ae78))
+
+<a name="2.2.1"></a>
+## [2.2.1](https://github.com/videojs/stream/compare/v2.2.0...v2.2.1) (2020-10-06)
+
+### Bug Fixes
+
+* check for multiple id3 sections in a file (#21) ([759a039](https://github.com/videojs/stream/commit/759a039)), closes [#21](https://github.com/videojs/stream/issues/21)
+* parse unknown codecs as audio or video (#15) ([cd2c9bb](https://github.com/videojs/stream/commit/cd2c9bb)), closes [#15](https://github.com/videojs/stream/issues/15)
+
+### Reverts
+
+* "fix: parse unknown codecs as audio or video (#15)" (#18) ([9983be8](https://github.com/videojs/stream/commit/9983be8)), closes [#15](https://github.com/videojs/stream/issues/15) [#18](https://github.com/videojs/stream/issues/18)
+
 <a name="2.2.0"></a>
 # [2.2.0](https://github.com/videojs/stream/compare/v2.1.0...v2.2.0) (2020-05-01)
 
