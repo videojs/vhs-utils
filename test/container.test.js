@@ -71,14 +71,14 @@ const h265seq = toUint8([
   0x00, 0x00, 0x00, 0x01
 ]);
 
-const h264shortnal = Array.prototype.slice.call(testData.h264.slice());
+const h264shortnal = Array.prototype.slice.call(testData.h264);
 
 // remove 0x00 from the front
 h264shortnal.splice(0, 1);
 // remove 0x00 from the back
 h264shortnal.splice(h264shortnal.length - 2, 1);
 
-const h265shortnal = Array.prototype.slice.call(testData.h265.slice());
+const h265shortnal = Array.prototype.slice.call(testData.h265);
 
 // remove 0x00 from the front
 h265shortnal.splice(0, 1);

@@ -85,16 +85,18 @@ export const getHvcCodec = function(bytes) {
 
   codec += levelId;
 
-  const constraints = constraintIds.reduce((acc, v) => {
-    if (v) {
-      if (acc) {
-        acc += '.';
-      }
-      acc += v.toString(16);
-    }
+  let constraints = '';
 
-    return acc;
-  }, '');
+  for (let i = 0; i < constraintIds.length; i++) {
+    const v = constraintIds[i];
+
+    if (v) {
+      if (constraints) {
+        constraints += '.';
+      }
+      constraints += v.toString(16);
+    }
+  }
 
   if (constraints) {
     codec += `.${constraints}`;

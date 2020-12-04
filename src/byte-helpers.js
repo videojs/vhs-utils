@@ -2,13 +2,23 @@ import window from 'global/window';
 
 // const log2 = Math.log2 ? Math.log2 : (x) => (Math.log(x) / Math.log(2));
 
+const repeat = function(str, len) {
+  let acc = '';
+
+  while (len--) {
+    acc += str;
+  }
+
+  return acc;
+};
+
 // count the number of bits it would take to represent a number
 // we used to do this with log2 but BigInt does not support builtin math
 // Math.ceil(log2(x));
 export const countBits = (x) => x.toString(2).length;
 // count the number of whole bytes it would take to represent a number
 export const countBytes = (x) => Math.ceil(countBits(x) / 8);
-export const padStart = (b, len, str = ' ') => (str.repeat(len) + b.toString()).slice(-len);
+export const padStart = (b, len, str = ' ') => (repeat(str, len) + b.toString()).slice(-len);
 export const isTypedArray = (obj) => ArrayBuffer.isView(obj);
 
 export const toUint8 = function(bytes) {
@@ -35,18 +45,24 @@ export const toUint8 = function(bytes) {
 
 export const toHexString = function(bytes) {
   bytes = toUint8(bytes);
+  let str = '';
 
-  return bytes.reduce(function(acc, b) {
-    return acc + padStart(b.toString(16), 2, '0');
-  }, '');
+  for (let i = 0; i < bytes.length; i++) {
+    str += padStart(bytes[i].toString(16), 2, '0');
+  }
+
+  return str;
 };
 
 export const toBinaryString = function(bytes) {
   bytes = toUint8(bytes);
+  let str = '';
 
-  return bytes.reduce(function(acc, b) {
-    return acc + padStart(b.toString(2), 8, '0');
-  }, '');
+  for (let i = 0; i < bytes.length; i++) {
+    str += padStart(bytes[i].toString(2), 8, '0');
+  }
+
+  return str;
 };
 const BigInt = window.BigInt || Number;
 

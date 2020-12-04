@@ -29,14 +29,14 @@ files.forEach((file) => QUnit.test(`${file} can be parsed for tracks and blocks`
   });
 
   assert.ok(blocks.length, `has ${blocks.length} blocks`);
-  assert.notOk(blocks.find((b) => !b.frames.length), 'all blocks have frame data');
+  assert.notOk(blocks.filter((b) => !b.frames.length).length, 'all blocks have frame data');
 }));
 
 QUnit.test('xiph and ebml lacing', function(assert) {
   const {blocks} = parseData(parsingFiles['xiph-ebml-lacing.mkv']());
 
   assert.ok(blocks.length, `has ${blocks.length} blocks`);
-  assert.notOk(blocks.find((b) => !b.frames.length), 'all blocks have frame data');
+  assert.notOk(blocks.filter((b) => !b.frames.length).length, 'all blocks have frame data');
   assert.equal(blocks[1].lacing, 1, 'xiph lacing');
   assert.equal(blocks[2].lacing, 3, 'ebml lacing');
 });
@@ -45,7 +45,7 @@ QUnit.test('fixed lacing', function(assert) {
   const {blocks} = parseData(parsingFiles['fixed-lacing.mkv']());
 
   assert.ok(blocks.length, `has ${blocks.length} blocks`);
-  assert.notOk(blocks.find((b) => !b.frames.length), 'all blocks have frame data');
+  assert.notOk(blocks.filter((b) => !b.frames.length).length, 'all blocks have frame data');
   assert.equal(blocks[12].lacing, 2, 'fixed lacing');
 });
 
@@ -53,5 +53,5 @@ QUnit.test('live data', function(assert) {
   const {blocks} = parseData(parsingFiles['live.mkv']());
 
   assert.ok(blocks.length, 6, 'has 6 blocks, even with "infinite" cluster dataSize');
-  assert.notOk(blocks.find((b) => !b.frames.length), 'all blocks have frame data');
+  assert.notOk(blocks.filter((b) => !b.frames.length).length, 'all blocks have frame data');
 });
