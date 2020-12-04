@@ -105,23 +105,26 @@ QUnit.test('should identify known types', function(assert) {
   ['mp3', 'aac', 'flac', 'ac3'].forEach(function(type) {
     const dataWithId3 = concatTypedArrays(id3Data, testData[type]);
     const dataWithId3Footer = concatTypedArrays(id3DataWithFooter, testData[type]);
-    const recursiveDataWithId3 = new Uint8Array([]
-      .concat(id3Data)
-      .concat(id3Data)
-      .concat(id3Data)
-      .concat(testData[type]));
-    const recursiveDataWithId3Footer = new Uint8Array([]
-      .concat(id3DataWithFooter)
-      .concat(id3DataWithFooter)
-      .concat(id3DataWithFooter)
-      .concat(testData[type]));
+    const recursiveDataWithId3 = concatTypedArrays(
+      id3Data,
+      id3Data,
+      id3Data,
+      testData[type]
+    );
+    const recursiveDataWithId3Footer = concatTypedArrays(
+      id3DataWithFooter,
+      id3DataWithFooter,
+      id3DataWithFooter,
+      testData[type]
+    );
 
-    const differentId3Sections = new Uint8Array([]
-      .concat(id3DataWithFooter)
-      .concat(id3Data)
-      .concat(id3DataWithFooter)
-      .concat(id3Data)
-      .concat(testData[type]));
+    const differentId3Sections = concatTypedArrays(
+      id3DataWithFooter,
+      id3Data,
+      id3DataWithFooter,
+      id3Data,
+      testData[type]
+    );
 
     assert.equal(detectContainerForBytes(dataWithId3), type, `id3 skipped and ${type} detected`);
     assert.equal(detectContainerForBytes(dataWithId3Footer), type, `id3 + footer skipped and ${type} detected`);

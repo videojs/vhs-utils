@@ -13,6 +13,9 @@ Object.keys(codecAliasMap).forEach((alias) => {
 });
 
 export const doesCodecMatch = function(a, b) {
+  if (!a) {
+    return false;
+  }
   if (codecAliasMap[b]) {
     return codecAliasMap[a].indexOf(b) !== -1;
   }
