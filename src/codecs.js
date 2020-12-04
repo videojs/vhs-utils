@@ -11,7 +11,6 @@ const regexs = {
   audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3|speex|aac)/,
   text: /^(stpp.ttml.im1t)/,
 
-
   // mux.js support regex
   muxerVideo: /^(avc0?1)/,
   muxerAudio: /^(mp4a)/,
