@@ -208,9 +208,7 @@ export const parseTracks = function(bytes) {
   const tracks = [];
 
   traks.forEach(function(trak) {
-    const track = {
-
-    };
+    const track = {raw: trak};
     const mdia = findBox(trak, ['mdia'])[0];
     const hdlr = findBox(mdia, ['hdlr'])[0];
     const stsd = findBox(mdia, ['minf', 'stbl', 'stsd'])[0];
@@ -238,8 +236,11 @@ export const parseTracks = function(bytes) {
     } else if (codec === 'mp4a' || codec === 'mp4v') {
       const esds = findNamedBox(codecBox, 'esds');
       const esDescriptor = parseDescriptors(esds.subarray(4))[0];
-      const decoderConfig = esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
+      let decoderConfig;
 
+      if (esDescriptor) {
+        decoderConfig = esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
+      }
       if (decoderConfig) {
         codec += '.' + toHexString(decoderConfig.oti);
         if (decoderConfig.oti === 0x40) {
@@ -249,6 +250,10 @@ export const parseTracks = function(bytes) {
         } else if (decoderConfig.oti === 0xdd) {
           codec = 'vorbis';
         }
+      } else if (track.type === 'audio') {
+        codec += '.40.2';
+      } else {
+        codec += '.20.9';
       }
     } else if (codec === 'av01') {
       // AV1DecoderConfigurationRecord
