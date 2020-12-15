@@ -173,6 +173,11 @@ export const findBox = function(bytes, paths, complete = false) {
   while (i < bytes.length) {
     const size = (bytes[i] << 24 | bytes[i + 1] << 16 | bytes[i + 2] << 8 | bytes[i + 3]) >>> 0;
     const type = bytes.subarray(i + 4, i + 8);
+
+    // invalid box format.
+    if (size === 0) {
+      break;
+    }
     let end = i + size;
 
     if (end > bytes.length) {
