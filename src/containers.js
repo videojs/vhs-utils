@@ -17,7 +17,8 @@ const CONSTANTS = {
   // "OggS" string literal in hex
   'ogg': toUint8([0x4f, 0x67, 0x67, 0x53]),
 
-  // ac3 sync byte
+  // ac-3 sync byte, also works for ec-3 as that is simply a codec
+  // of ac-3
   'ac3': toUint8([0x0b, 0x77]),
 
   // "RIFF" string literal in hex used for wav and avi
