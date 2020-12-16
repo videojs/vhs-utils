@@ -25,5 +25,17 @@ npm install --save @videojs/vhs-utils
 
 All utility functions are published under dist and can be required/imported like so:
 
-`import resolveUrl from '@videojs/vhs-utils/dist/resolve-url';`
-`const resolveUrl = require('@videojs/vhs-utils/dist/resolve-url');`
+> es import using es dist
+```js
+import resolveUrl from '@videojs/vhs-utils/es/resolve-url';
+```
+
+> cjs import using cjs dist
+```js
+const resolveUrl = require('@videojs/vhs-utils/cjs/resolve-url');
+```
+
+> depricated cjs dist
+```js
+const resolveUrl = require('@videojs/vhs-utils/dist/resolve-url');
+```
