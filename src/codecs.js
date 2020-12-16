@@ -8,7 +8,7 @@ const regexs = {
 
   // to determine if a codec is audio or video
   video: /^(av0?1|avc0?[1234]|vp0?[89]|hvc1|hev1|theora|mp4v)/,
-  audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3)/,
+  audio: /^(mp4a|flac|vorbis|opus|ac-[34]|ec-3|alac|mp3|speex|aac)/,
   text: /^(stpp.ttml.im1t)/,
 
   // mux.js support regex

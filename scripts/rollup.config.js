@@ -1,6 +1,7 @@
 const generate = require('videojs-generate-rollup-config');
 const fs = require('fs');
 const path = require('path');
+const createTestData = require('./create-test-data.js');
 
 const BASE_DIR = path.join(__dirname, '..');
 const SRC_DIR = path.join(BASE_DIR, 'src');
@@ -10,6 +11,16 @@ const files = fs.readdirSync(SRC_DIR);
 const shared = {
   externals(defaults) {
     defaults.module.push('url-toolkit');
+    return defaults;
+  },
+  primedPlugins(defaults) {
+    return Object.assign(defaults, {
+      createTestData: createTestData()
+    });
+  },
+  plugins(defaults) {
+    defaults.test.splice(0, 0, 'createTestData');
+
     return defaults;
   }
 };
