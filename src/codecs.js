@@ -98,8 +98,7 @@ export const mapLegacyAvcCodecs = function(codecString) {
  */
 export const parseCodecs = function(codecString = '') {
   const codecs = codecString.split(',');
-  const result = {};
-  const unknown = [];
+  const result = [];
 
   codecs.forEach(function(codec) {
     codec = codec.trim();
@@ -117,17 +116,13 @@ export const parseCodecs = function(codecString = '') {
       const type = codec.substring(0, match[1].length);
       const details = codec.replace(type, '');
 
-      result[name] = {type, details};
+      result.push({type, details, mediaType: name});
     });
 
     if (!codecType) {
-      unknown.push(codec);
+      result.push({type: codec, details: '', mediaType: 'unknown'});
     }
   });
-
-  if (unknown.length) {
-    result.unknown = unknown;
-  }
 
   return result;
 };
