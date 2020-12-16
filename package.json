@@ -22,9 +22,8 @@
     "build-test": "cross-env-shell TEST_BUNDLE_ONLY=1 'npm run build'",
     "build:browser": "rollup -c scripts/rollup.config.js",
     "build:cjs": "babel-config-cjs -d ./cjs ./src",
-    "build:dist": "babel-config-cjs -d ./dist ./src",
     "build:es": "babel-config-es -d ./es ./src",
-    "clean": "shx rm -rf ./dist ./test/dist ./cjs ./es && shx mkdir -p ./dist ./test/dist ./cjs ./es",
+    "clean": "shx rm -rf ./dist ./test/dist ./cjs ./es && shx mkdir -p ./test/dist ./cjs ./es",
     "lint": "vjsstandard",
     "server": "karma start scripts/karma.conf.js --singleRun=false --auto-watch",
     "start": "npm-run-all -p server watch",
@@ -38,7 +37,6 @@
     "watch": "npm-run-all -p watch:*",
     "watch:browser": "npm run build:js -- -w",
     "watch:cjs": "npm run build:cjs -- -w",
-    "watch:dist": "npm run build:dist -- -w",
     "watch:es": "npm run build:es -- -w",
     "prepublishOnly": "npm-run-all build-prod && vjsverify --verbose --skip-es-check"
   },
@@ -55,6 +53,8 @@
   "vjsstandard": {
     "ignore": [
       "dist",
+      "cjs",
+      "es",
       "docs",
       "test/dist"
     ]
