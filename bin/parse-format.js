@@ -9,7 +9,7 @@ const path = require('path');
 const showHelp = function() {
   console.log(`
   parse-format [...media-files]
-  curl 'some-media-ulr' | parse-format
+  curl -s 'some-media-ulr' | parse-format
   wget -O - -o /dev/null 'some-media-url' | parse-format
 
   parse containers and codecs given a media file that contains that information.
@@ -41,76 +41,41 @@ const parseArgs = function(args) {
 
 const cli = function(stdin) {
   const options = parseArgs(process.argv.slice(2));
-  const promises = [];
+  const streams = [];
 
+  // if stdin was provided
   if (stdin) {
-    const p = new Promise(function(resolve, reject) {
-      let allData;
-      let lastResult;
-
-      // read from stdin, aka piped input
-      stdin.on('readable', () => {
-        let chunk;
-
-        // Use a loop to make sure we read all available data.
-        while ((chunk = process.stdin.read()) !== null) {
-          allData = concatTypedArrays(allData, chunk);
-        }
-
-        lastResult = parseFormatForBytes(allData);
-
-        if (!Object.keys(lastResult.codecs).length) {
-          return;
-        }
-      });
-
-      stdin.on('end', () => {
-        console.log('Results for stdin');
-        console.log(lastResult);
-        if (!Object.keys(lastResult.codecs).length) {
-          console.warn('WARNING no codecs found');
-        }
-        console.log();
-        resolve();
-      });
-    });
-
-    promises.push(p);
+    streams.push({stream: process.stdin, file: 'stdin'});
   }
 
   options.files.forEach(function(file) {
-    const p = new Promise(function(resolve, reject) {
-      const stream = fs.createReadStream(path.resolve(file));
-      let allData;
-      let lastResult;
-
-      stream.on('data', (chunk) => {
-        allData = concatTypedArrays(allData, chunk);
-
-        lastResult = parseFormatForBytes(allData);
-
-        if (!Object.keys(lastResult.codecs).length) {
-          return;
-        }
-
-        stream.destroy();
-      });
-      stream.on('error', reject);
-
-      stream.on('close', () => {
-        console.log(`Results for ${file}`);
-        console.log(lastResult);
-        if (!Object.keys(lastResult.codecs).length) {
-          console.warn('WARNING no codecs found');
-        }
-        console.log();
-        resolve();
-      });
-    });
-
-    promises.push(p);
+    streams.push({stream: fs.createReadStream(path.resolve(file)), file});
   });
-  return Promise.all(promises).then(function() {
+
+  return Promise.all(streams.map(({file, stream}) => new Promise(function(resolve, reject) {
+    let allData;
+    let lastResult;
+
+    stream.on('data', (chunk) => {
+      allData = concatTypedArrays(allData, chunk);
+      lastResult = parseFormatForBytes(allData);
+
+      if (lastResult && Object.keys(lastResult.codecs).length) {
+        return stream.destroy();
+      }
+    });
+    stream.on('error', reject);
+
+    stream.on('close', () => {
+      console.log(`Results for ${file}`);
+      console.log(lastResult);
+      if (lastResult && !Object.keys(lastResult.codecs).length) {
+        console.warn('WARNING no codecs found');
+      }
+      console.log();
+      resolve();
+    });
+  }))).then(function() {
     console.log('All files read!');
     console.log();
     process.exit(0);
