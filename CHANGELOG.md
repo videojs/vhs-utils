@@ -1,3 +1,33 @@
+<a name="3.0.0"></a>
+# [3.0.0](https://github.com/videojs/vhs-utils/compare/v2.3.0...v3.0.0) (2020-12-18)
+
+### Features
+
+* Extend our current container parsing logic and add logic for parsing codecs from files ([#14](https://github.com/videojs/vhs-utils/issues/14)) ([d425956](https://github.com/videojs/vhs-utils/commit/d425956))
+* parse any number of codecs rather than just the last audio or the last video codec. ([#23](https://github.com/videojs/vhs-utils/issues/23)) ([33ec9f5](https://github.com/videojs/vhs-utils/commit/33ec9f5))
+* use [@videojs](https://github.com/videojs)/babel-config to transpile code to cjs/es for node ([#20](https://github.com/videojs/vhs-utils/issues/20)) ([c6dbd0b](https://github.com/videojs/vhs-utils/commit/c6dbd0b))
+
+### Chores
+
+* switch from travis to github ci ([#24](https://github.com/videojs/vhs-utils/issues/24)) ([cfee30b](https://github.com/videojs/vhs-utils/commit/cfee30b))
+
+
+### BREAKING CHANGES
+
+* cjs dist files changed from './dist' to './cjs'
+* parseCodecs now returns an array of codecs that where parsed so that we can support any number of codecs instead of just two.
+* toUint8 in byte-helpers functions slightly differently
+* getId3Offset is exported from id3-helpers rather than containers
+
+We can now parse the container for and many of the codecs within (where applicable) for mp4, avi, ts, mkv, webm, ogg, wav, aac, ac3 (and ec3 which is contained in ac3 files), mp3, flac, raw h265, and raw h264.
+
+Codec parsing has also been extended to parse codec details in a file for vp09, avc (h264), hevc (h265), av1, and opus
+
+Finally we have the following additional features to our parsing of codec/container information:
+* skipping multiple id3 tags at the start of a file for flac, mp3, and aac
+* discarding emulation prevention bits (in h264, h265)
+* parsing raw h264/h265 to get codec params for ts, avi, and even raw h264/h265 files
+
 <a name="2.3.0"></a>
 # [2.3.0](https://github.com/videojs/vhs-utils/compare/v2.2.1...v2.3.0) (2020-12-03)
 
