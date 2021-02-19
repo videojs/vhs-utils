@@ -404,6 +404,8 @@ export const addSampleDescription = function(track, bytes) {
     const decoderConfig = esDescriptor && esDescriptor.descriptors.filter(({tag}) => tag === 0x04)[0];
 
     if (decoderConfig) {
+      // most codecs do not have a further '.'
+      // such as 0xa5 for ac-3 and 0xa6 for e-ac-3
       codec += '.' + toHexString(decoderConfig.oti);
       if (decoderConfig.oti === 0x40) {
         codec += '.' + (decoderConfig.descriptors[0].bytes[0] >> 3).toString();

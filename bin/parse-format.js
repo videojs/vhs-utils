@@ -1,8 +1,8 @@
 #! /usr/bin/env node
 /* eslint-disable no-console */
 const {version} = require('../package.json');
-const {parseFormatForBytes} = require('../dist/format-parser.js');
-const {concatTypedArrays} = require('../dist/byte-helpers.js');
+const {parseFormatForBytes} = require('../cjs/format-parser.js');
+const {concatTypedArrays} = require('../cjs/byte-helpers.js');
 const fs = require('fs');
 const path = require('path');
 
