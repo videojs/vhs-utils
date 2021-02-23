@@ -8,12 +8,10 @@ const resolveUrl = (baseUrl, relativeUrl) => {
   }
 
   // if the base URL is relative then combine with the current location
-  if (!(/\/\//i).test(baseUrl)) {
-    if (window.URL) {
-      baseUrl = new window.URL(baseUrl, window.location);
-    } else {
-      baseUrl = URLToolkit.buildAbsoluteURL(window.location && window.location.href || '', baseUrl);
-    }
+  if (window.URL) {
+    baseUrl = new window.URL(baseUrl, window.location);
+  } else if (!(/\/\//i).test(baseUrl)) {
+    baseUrl = URLToolkit.buildAbsoluteURL(window.location && window.location.href || '', baseUrl);
   }
 
   if (window.URL) {
