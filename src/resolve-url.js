@@ -11,11 +11,14 @@ const resolveUrl = (baseUrl, relativeUrl) => {
   // feature detect the behavior we want
   const nativeURL = typeof window.URL === 'function';
 
-  const protocolLess = !(/^https?:/.test(baseUrl));
+  const protocolLess = (/^\/\//.test(baseUrl));
+  // remove location if window.location isn't available (i.e. we're in node)
+  // and if baseUrl isn't an absolute url
+  const removeLocation = !window.location && !(/\/\//i).test(baseUrl);
 
   // if the base URL is relative then combine with the current location
   if (nativeURL) {
-    baseUrl = new window.URL(baseUrl, window.location);
+    baseUrl = new window.URL(baseUrl, window.location || 'http://example.com');
   } else if (!(/\/\//i).test(baseUrl)) {
     baseUrl = URLToolkit.buildAbsoluteURL(window.location && window.location.href || '', baseUrl);
   }
@@ -23,12 +26,16 @@ const resolveUrl = (baseUrl, relativeUrl) => {
   if (nativeURL) {
     const newUrl = new URL(relativeUrl, baseUrl);
 
-    // if we're a protocol-less url, return a protocol-less url
-    if (protocolLess) {
+    // if we're a protocol-less url, remove the protocol
+    // and if we're location-less, remove the location
+    // otherwise, return the url unmodified
+    if (removeLocation) {
+      return newUrl.href.slice(18);
+    } else if (protocolLess) {
       return newUrl.href.slice(newUrl.protocol.length);
     }
 
-    return newUrl;
+    return newUrl.href;
   }
   return URLToolkit.buildAbsoluteURL(baseUrl, relativeUrl);
 
