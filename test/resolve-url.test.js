@@ -18,12 +18,7 @@ QUnit.test('works with a selection of valid urls', function(assert) {
     'https://example.com/z.ts'
   );
   assert.equal(resolveUrl('http://a.com/b/cd/e.m3u8', 'z.ts'), 'http://a.com/b/cd/z.ts');
-  // window.URL cannot return protocol-less (what they call schema-relative) URLs
-  if (typeof window.URL === 'function') {
-    assert.equal(resolveUrl('//a.com/b/cd/e.m3u8', 'z.ts'), 'http://a.com/b/cd/z.ts');
-  } else {
-    assert.equal(resolveUrl('//a.com/b/cd/e.m3u8', 'z.ts'), '//a.com/b/cd/z.ts');
-  }
+  assert.equal(resolveUrl('//a.com/b/cd/e.m3u8', 'z.ts'), '//a.com/b/cd/z.ts');
   assert.equal(
     resolveUrl('/a/b/cd/e.m3u8', 'https://example.com:8080/z.ts'),
     'https://example.com:8080/z.ts'
