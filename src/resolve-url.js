@@ -1,6 +1,8 @@
 import URLToolkit from 'url-toolkit';
 import window from 'global/window';
 
+const DEFAULT_LOCATION = 'http://example.com';
+
 const resolveUrl = (baseUrl, relativeUrl) => {
   // return early if we don't need to resolve
   if ((/^[a-z]+:/i).test(relativeUrl)) {
@@ -18,7 +20,7 @@ const resolveUrl = (baseUrl, relativeUrl) => {
 
   // if the base URL is relative then combine with the current location
   if (nativeURL) {
-    baseUrl = new window.URL(baseUrl, window.location || 'http://example.com');
+    baseUrl = new window.URL(baseUrl, window.location || DEFAULT_LOCATION);
   } else if (!(/\/\//i).test(baseUrl)) {
     baseUrl = URLToolkit.buildAbsoluteURL(window.location && window.location.href || '', baseUrl);
   }
@@ -30,7 +32,7 @@ const resolveUrl = (baseUrl, relativeUrl) => {
     // and if we're location-less, remove the location
     // otherwise, return the url unmodified
     if (removeLocation) {
-      return newUrl.href.slice(18);
+      return newUrl.href.slice(DEFAULT_LOCATION.length);
     } else if (protocolLess) {
       return newUrl.href.slice(newUrl.protocol.length);
     }
