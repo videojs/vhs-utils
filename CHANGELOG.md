@@ -1,3 +1,18 @@
+<a name="3.0.1"></a>
+## [3.0.1](https://github.com/videojs/vhs-utils/compare/v3.0.0...v3.0.1) (2021-04-29)
+
+### Bug Fixes
+
+* binary issues ([e9f5079](https://github.com/videojs/vhs-utils/commit/e9f5079))
+
+### Chores
+
+* update vjsverify ([105c26a](https://github.com/videojs/vhs-utils/commit/105c26a))
+
+### Performance Improvements
+
+* use native URL when available ([#26](https://github.com/videojs/vhs-utils/issues/26)) ([e7eaab9](https://github.com/videojs/vhs-utils/commit/e7eaab9))
+
 <a name="3.0.0"></a>
 # [3.0.0](https://github.com/videojs/vhs-utils/compare/v2.3.0...v3.0.0) (2020-12-18)
 
