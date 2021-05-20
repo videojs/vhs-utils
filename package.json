@@ -1,6 +1,6 @@
 {
   "name": "@videojs/vhs-utils",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Objects and functions shared throughtout @videojs/http-streaming code",
   "repository": {
     "type": "git",

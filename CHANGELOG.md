@@ -1,3 +1,10 @@
+<a name="3.0.2"></a>
+## [3.0.2](https://github.com/videojs/vhs-utils/compare/v3.0.1...v3.0.2) (2021-05-20)
+
+### Bug Fixes
+
+* properly handle data URIs ([#27](https://github.com/videojs/vhs-utils/issues/27)) ([9b10245](https://github.com/videojs/vhs-utils/commit/9b10245)), closes [videojs/video.js#7240](https://github.com/videojs/video.js/issues/7240)
+
 <a name="3.0.1"></a>
 ## [3.0.1](https://github.com/videojs/vhs-utils/compare/v3.0.0...v3.0.1) (2021-04-29)
 
