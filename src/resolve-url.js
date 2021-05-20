@@ -11,7 +11,7 @@ const resolveUrl = (baseUrl, relativeUrl) => {
 
   // if baseUrl is a data URI, ignore it and resolve everything relative to window.location
   if ((/^data:/).test(baseUrl)) {
-    baseUrl = window.location.href;
+    baseUrl = window.location && window.location.href;
   }
 
   // IE11 supports URL but not the URL constructor
