@@ -9,6 +9,11 @@ const resolveUrl = (baseUrl, relativeUrl) => {
     return relativeUrl;
   }
 
+  // if baseUrl is a data URI, ignore it and resolve everything relative to window.location
+  if ((/^data:/).test(baseUrl)) {
+    baseUrl = window.location;
+  }
+
   // IE11 supports URL but not the URL constructor
   // feature detect the behavior we want
   const nativeURL = typeof window.URL === 'function';
