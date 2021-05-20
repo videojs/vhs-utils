@@ -40,4 +40,10 @@ QUnit.test('works with a selection of valid urls', function(assert) {
     'http://example.com/hello.m3u8',
     'absolute urls should still be absolute even with a data uri'
   );
+
+  assert.equal(
+    resolveUrl('http://example.com', 'data:application/dash+xml;charset=utf-8,http%3A%2F%2Fexample.com'),
+    'data:application/dash+xml;charset=utf-8,http%3A%2F%2Fexample.com',
+    'data uri is treated as an absolute url'
+  );
 });
