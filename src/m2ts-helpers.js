@@ -1,6 +1,9 @@
 import {bytesMatch, toUint8} from './byte-helpers.js';
 const SYNC_BYTE = 0x47;
 
+// use of maxPes is deprecated as we should always look at
+// all pes packets to prevent being caught off gaurd by changes
+// in that stream that happen after the pes specified
 export const parseTs = function(bytes, maxPes = Infinity) {
   bytes = toUint8(bytes);
 
