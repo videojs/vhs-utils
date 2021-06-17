@@ -27,14 +27,14 @@ export const parseTs = function(bytes, maxPes = Infinity) {
 
     if (pid === 0 && !pmt.pid) {
       pmt.pid = (packet[payloadOffset + 10] & 0x1f) << 8 | packet[payloadOffset + 11];
-    } else if (pmt.pid && pid === pmt.pid && !pmt.streams) {
+    } else if (pmt.pid && pid === pmt.pid) {
       const isNotForward = packet[payloadOffset + 5] & 0x01;
 
       // ignore forward pmt delarations
       if (!isNotForward) {
         continue;
       }
-      pmt.streams = {};
+      pmt.streams = pmt.streams || {};
 
       const sectionLength = (packet[payloadOffset + 1] & 0x0f) << 8 | packet[payloadOffset + 2];
       const tableEnd = 3 + sectionLength - 4;
