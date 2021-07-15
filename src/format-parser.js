@@ -218,7 +218,7 @@ const parseCodecFrom = {
   },
 
   ts(bytes) {
-    const result = parseTs(bytes, 2);
+    const result = parseTs(bytes);
     const codecs = {};
 
     Object.keys(result.streams).forEach(function(esPid) {

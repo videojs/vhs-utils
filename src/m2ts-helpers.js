@@ -1,6 +1,9 @@
 import {bytesMatch, toUint8} from './byte-helpers.js';
 const SYNC_BYTE = 0x47;
 
+// use of maxPes is deprecated as we should always look at
+// all pes packets to prevent being caught off guard by changes
+// in that stream that happen after the pes specified
 export const parseTs = function(bytes, maxPes = Infinity) {
   bytes = toUint8(bytes);
 
@@ -27,14 +30,14 @@ export const parseTs = function(bytes, maxPes = Infinity) {
 
     if (pid === 0 && !pmt.pid) {
       pmt.pid = (packet[payloadOffset + 10] & 0x1f) << 8 | packet[payloadOffset + 11];
-    } else if (pmt.pid && pid === pmt.pid && !pmt.streams) {
+    } else if (pmt.pid && pid === pmt.pid) {
       const isNotForward = packet[payloadOffset + 5] & 0x01;
 
       // ignore forward pmt delarations
       if (!isNotForward) {
         continue;
       }
-      pmt.streams = {};
+      pmt.streams = pmt.streams || {};
 
       const sectionLength = (packet[payloadOffset + 1] & 0x0f) << 8 | packet[payloadOffset + 2];
       const tableEnd = 3 + sectionLength - 4;
