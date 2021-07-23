@@ -86,8 +86,8 @@ h265shortnal.splice(0, 1);
 h265shortnal.splice(h265shortnal.length - 2, 1);
 
 const mp4Variants = {
-  'start with moov': concatTypedArrays(filler(4), [0x0B, 0x6D, 0x6F, 0x76]),
-  'start with moof': concatTypedArrays(filler(4), [0x0B, 0x6D, 0x6F, 0x66]),
+  'start with moov': concatTypedArrays(filler(4), [0x6D, 0x6F, 0x6F, 0x76]),
+  'start with moof': concatTypedArrays(filler(4), [0x6D, 0x6F, 0x6F, 0x66]),
   'start with styp': concatTypedArrays(filler(4), [0x73, 0x74, 0x79, 0x70])
 };
 
