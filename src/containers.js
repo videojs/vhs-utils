@@ -42,7 +42,7 @@ const CONSTANTS = {
   // "ftyp" string literal in hex
   'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74]),
 
-  // moof string literal in hex
+  // moov string literal in hex
   'moov': toUint8([0x6D, 0x6F, 0x6F, 0x76]),
 
   // moof string literal in hex
