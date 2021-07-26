@@ -1,3 +1,11 @@
+<a name="3.0.3"></a>
+## [3.0.3](https://github.com/videojs/vhs-utils/compare/v3.0.2...v3.0.3) (2021-07-26)
+
+### Bug Fixes
+
+* detect mp4 starting with moof/moov box as mp4 ([#29](https://github.com/videojs/vhs-utils/issues/29)) ([51d995d](https://github.com/videojs/vhs-utils/commit/51d995d))
+* look at all program map tables for ts stream types ([#28](https://github.com/videojs/vhs-utils/issues/28)) ([1edb519](https://github.com/videojs/vhs-utils/commit/1edb519))
+
 <a name="3.0.2"></a>
 ## [3.0.2](https://github.com/videojs/vhs-utils/compare/v3.0.1...v3.0.2) (2021-05-20)
 
