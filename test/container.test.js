@@ -85,6 +85,12 @@ h265shortnal.splice(0, 1);
 // remove 0x00 from the back
 h265shortnal.splice(h265shortnal.length - 2, 1);
 
+const mp4Variants = {
+  'start with moov': concatTypedArrays(filler(4), [0x6D, 0x6F, 0x6F, 0x76]),
+  'start with moof': concatTypedArrays(filler(4), [0x6D, 0x6F, 0x6F, 0x66]),
+  'start with styp': concatTypedArrays(filler(4), [0x73, 0x74, 0x79, 0x70])
+};
+
 QUnit.module('detectContainerForBytes');
 
 QUnit.test('should identify known types', function(assert) {
@@ -96,9 +102,11 @@ QUnit.test('should identify known types', function(assert) {
     assert.equal(detectContainerForBytes(data), key, `found ${key} with Uint8Array`);
   });
 
-  const mp4Bytes = concatTypedArrays([0x00, 0x00, 0x00, 0x00], stringToBytes('styp'));
+  Object.keys(mp4Variants).forEach(function(name) {
+    const bytes = mp4Variants[name];
 
-  assert.equal(detectContainerForBytes(mp4Bytes), 'mp4', 'styp mp4 detected as mp4');
+    assert.equal(detectContainerForBytes(bytes), 'mp4', `${name} detected as mp4`);
+  });
 
   // mp3/aac/flac/ac3 audio can have id3 data before the
   // signature for the file, so we need to handle that.

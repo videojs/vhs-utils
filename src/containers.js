@@ -39,8 +39,14 @@ const CONSTANTS = {
   // "styp" string literal in hex
   'fmp4': toUint8([0x73, 0x74, 0x79, 0x70]),
 
-  // "ftyp" string literal in hex
-  'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74])
+  // "ftypqt" string literal in hex
+  'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74]),
+
+  // moov string literal in hex
+  'moov': toUint8([0x6D, 0x6F, 0x6F, 0x76]),
+
+  // moof string literal in hex
+  'moof': toUint8([0x6D, 0x6F, 0x6F, 0x66])
 };
 
 const _isLikely = {
@@ -71,9 +77,20 @@ const _isLikely = {
   },
 
   mp4(bytes) {
-    return !_isLikely['3gp'](bytes) && !_isLikely.mov(bytes) &&
-      (bytesMatch(bytes, CONSTANTS.mp4, {offset: 4}) ||
-       bytesMatch(bytes, CONSTANTS.fmp4, {offset: 4}));
+    // if this file is another base media file format, it is not mp4
+    if (_isLikely['3gp'](bytes) || _isLikely.mov(bytes)) {
+      return false;
+    }
+
+    // if this file starts with a ftyp or styp box its mp4
+    if (bytesMatch(bytes, CONSTANTS.mp4, {offset: 4}) || bytesMatch(bytes, CONSTANTS.fmp4, {offset: 4})) {
+      return true;
+    }
+
+    // if this file starts with a moof/moov box its mp4
+    if (bytesMatch(bytes, CONSTANTS.moof, {offset: 4}) || bytesMatch(bytes, CONSTANTS.moov, {offset: 4})) {
+      return true;
+    }
   },
   mov(bytes) {
     return bytesMatch(bytes, CONSTANTS.mov, {offset: 4});
