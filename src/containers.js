@@ -39,7 +39,7 @@ const CONSTANTS = {
   // "styp" string literal in hex
   'fmp4': toUint8([0x73, 0x74, 0x79, 0x70]),
 
-  // "ftyp" string literal in hex
+  // "ftypqt" string literal in hex
   'mov': toUint8([0x66, 0x74, 0x79, 0x70, 0x71, 0x74]),
 
   // moov string literal in hex
