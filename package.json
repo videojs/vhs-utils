@@ -86,10 +86,11 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.12.8",
+    "@brandonocasey/spawn-promise": "~0.2.0",
     "@videojs/babel-config": "^0.2.0",
     "@videojs/generator-helpers": "~2.0.1",
-    "rollup": "^2.28.2",
     "karma": "^5.2.3",
+    "rollup": "^2.28.2",
     "videojs-generate-karma-config": "~7.0.0",
     "videojs-generate-rollup-config": "~6.0.0",
     "videojs-generator-verify": "~3.0.3",

@@ -1,48 +1,23 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 const shelljs = require('shelljs');
-const childProcess = require('child_process');
+const spawnPromise = require('@brandonocasey/spawn-promise');
 const path = require('path');
-
 const baseDir = path.join(__dirname, '..', 'test', 'fixtures', 'formats');
 const DURATION = '0.01s';
 const INPUT_FILE = path.join(__dirname, 'big-buck-bunny.mp4');
 
 shelljs.rm('-rf', baseDir);
 
-const promiseSpawn = function(bin, args, options = {}) {
-  process.setMaxListeners(1000);
-
-  return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(bin, args, options);
-
-    let stdout = '';
-    let stderr = '';
-    let out = '';
-
-    child.stdout.on('data', function(chunk) {
-      stdout += chunk;
-      out += chunk;
-    });
-
-    child.stderr.on('data', function(chunk) {
-      stderr += chunk;
-      out += chunk;
-    });
-
-    const kill = () => child.kill();
-
-    process.on('SIGINT', kill);
-    process.on('SIGQUIT', kill);
-    process.on('exit', kill);
-
-    child.on('close', (status) => resolve({
-      cmd: [bin].concat(args),
+const promiseSpawn = function(bin, args, options) {
+  return spawnPromise(bin, args, options).then(function({status, combined, stderr, stdout, parameters}) {
+    return Promise.resolve({
+      cmd: [parameters[0]].concat(parameters[1]),
       status,
-      out: out.toString(),
+      combined: combined.toString(),
       stderr: stderr.toString(),
       stdout: stdout.toString()
-    }));
+    });
   });
 };
 
@@ -319,7 +294,7 @@ const promises = Object.keys(containerCodecs).map((container) => {
     return resolve(ffmpeg([].concat(codec.args).concat([filePath])).then(function(result) {
       if (result.status !== 0) {
         console.log(result.cmd.join(' '));
-        console.log(`FAIL: ${fileName} ${result.out}`);
+        console.log(`FAIL: ${fileName} ${result.combined}`);
         return;
       }
       total++;
