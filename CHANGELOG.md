@@ -1,3 +1,15 @@
+<a name="3.0.4"></a>
+## [3.0.4](https://github.com/videojs/vhs-utils/compare/v3.0.3...v3.0.4) (2021-09-22)
+
+### Bug Fixes
+
+* mark global/window/document as external globals ([#30](https://github.com/videojs/vhs-utils/issues/30)) ([8216630](https://github.com/videojs/vhs-utils/commit/8216630))
+
+### Chores
+
+* don't run tests on version ([#31](https://github.com/videojs/vhs-utils/issues/31)) ([24dab1d](https://github.com/videojs/vhs-utils/commit/24dab1d))
+* switch generate-formats to shared [@brandonocasey](https://github.com/brandonocasey)/spawn-promise ([873b43f](https://github.com/videojs/vhs-utils/commit/873b43f))
+
 <a name="3.0.3"></a>
 ## [3.0.3](https://github.com/videojs/vhs-utils/compare/v3.0.2...v3.0.3) (2021-07-26)
 
