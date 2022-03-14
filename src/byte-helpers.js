@@ -24,7 +24,7 @@ export const isArrayBufferView = (obj) => {
     return ArrayBuffer.isView(obj);
   }
 
-  return obj.buffer instanceof ArrayBuffer;
+  return obj && obj.buffer instanceof ArrayBuffer;
 };
 export const isTypedArray = (obj) => isArrayBufferView(obj);
 
