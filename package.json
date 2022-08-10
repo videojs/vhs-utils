@@ -11,7 +11,7 @@
   },
   "browserslist": [
     "defaults",
-    "ie 11"
+    "not ie 11"
   ],
   "main": "./cjs/index.js",
   "module": "./es/index.js",
