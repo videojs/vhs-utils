@@ -9,10 +9,6 @@
   "generator-videojs-plugin": {
     "version": "7.7.1"
   },
-  "browserslist": [
-    "defaults",
-    "not ie 11"
-  ],
   "main": "./cjs/index.js",
   "module": "./es/index.js",
   "browser": "./dist/vhs-utils.js",
@@ -89,9 +85,9 @@
     "@videojs/babel-config": "^0.2.0",
     "@videojs/generator-helpers": "~2.0.1",
     "karma": "^5.2.3",
-    "rollup": "^2.28.2",
+    "rollup": "^2.38.0",
     "videojs-generate-karma-config": "~7.0.0",
-    "videojs-generate-rollup-config": "^6.2.2",
+    "videojs-generate-rollup-config": "~7.0.0",
     "videojs-generator-verify": "~3.0.3",
     "videojs-standard": "^8.0.4"
   }
