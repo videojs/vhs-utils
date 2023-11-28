@@ -1,3 +1,10 @@
+<a name="4.1.0"></a>
+# [4.1.0](https://github.com/videojs/vhs-utils/compare/v4.0.0...v4.1.0) (2023-11-28)
+
+### Features
+
+* Check for ManagedMediaSource support ([#37](https://github.com/videojs/vhs-utils/issues/37)) ([6700c5f](https://github.com/videojs/vhs-utils/commit/6700c5f))
+
 <a name="4.0.0"></a>
 # [4.0.0](https://github.com/videojs/vhs-utils/compare/v3.0.5...v4.0.0) (2022-08-19)
 
