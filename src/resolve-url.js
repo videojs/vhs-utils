@@ -1,6 +1,6 @@
 import window from 'global/window';
 
-const DEFAULT_LOCATION = 'http://example.com';
+const DEFAULT_LOCATION = 'https://example.com';
 
 const resolveUrl = (baseUrl, relativeUrl) => {
   // return early if we don't need to resolve
