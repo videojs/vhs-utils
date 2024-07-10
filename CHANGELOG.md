@@ -1,3 +1,10 @@
+<a name="4.1.1"></a>
+## [4.1.1](https://github.com/videojs/vhs-utils/compare/v4.1.0...v4.1.1) (2024-07-10)
+
+### Code Refactoring
+
+* remove url-toolkit dependency ([#38](https://github.com/videojs/vhs-utils/issues/38)) ([e124470](https://github.com/videojs/vhs-utils/commit/e124470))
+
 <a name="4.1.0"></a>
 # [4.1.0](https://github.com/videojs/vhs-utils/compare/v4.0.0...v4.1.0) (2023-11-28)
 
