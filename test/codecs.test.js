@@ -1,4 +1,4 @@
-import window from 'global/window';
+import window from 'videojs-global-compat/window';
 import QUnit from 'qunit';
 import {
   mapLegacyAvcCodecs,

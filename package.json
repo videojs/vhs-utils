@@ -75,8 +75,7 @@
     "README.md": "doctoc --notitle"
   },
   "dependencies": {
-    "@babel/runtime": "^7.12.5",
-    "global": "^4.4.0"
+    "@babel/runtime": "^7.12.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.8",

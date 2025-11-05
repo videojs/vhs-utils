@@ -1,4 +1,4 @@
-import window from 'global/window';
+import window from 'videojs-global-compat/window';
 
 const atob = (s) => window.atob ? window.atob(s) : Buffer.from(s, 'base64').toString('binary');
 
