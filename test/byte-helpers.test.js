@@ -10,7 +10,7 @@ import {
   numberToBytes,
   bytesMatch
 } from '../src/byte-helpers.js';
-import window from 'videojs-global-compat/window';
+import window from '@videojs/global-compat/window';
 
 const arrayNames = [];
 const BigInt = window.BigInt;

@@ -1,4 +1,4 @@
-import window from 'videojs-global-compat/window';
+import window from '@videojs/global-compat/window';
 
 const regexs = {
   // to determine mime types

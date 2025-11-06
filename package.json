@@ -76,7 +76,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.12.5",
-    "videojs-global-compat": "^1.0.0"
+    "@videojs/global-compat": "^1.0.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.8",
