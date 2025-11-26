@@ -46,7 +46,10 @@ const CONSTANTS = {
   'moov': toUint8([0x6D, 0x6F, 0x6F, 0x76]),
 
   // moof string literal in hex
-  'moof': toUint8([0x6D, 0x6F, 0x6F, 0x66])
+  'moof': toUint8([0x6D, 0x6F, 0x6F, 0x66]),
+
+  // "WEBVTT" string literal in hex
+  'vtt': toUint8([0x57, 0x45, 0x42, 0x56, 0x54, 0x54])
 };
 
 const _isLikely = {
@@ -102,6 +105,11 @@ const _isLikely = {
     const offset = getId3Offset(bytes);
 
     return bytesMatch(bytes, CONSTANTS.ac3, {offset});
+  },
+
+  // Must be checked before ts. The sorting of isLikelyTypes ensures this.
+  vtt(bytes) {
+    return bytesMatch(bytes, CONSTANTS.vtt);
   },
 
   ts(bytes) {
