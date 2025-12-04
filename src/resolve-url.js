@@ -1,4 +1,4 @@
-import window from 'global/window';
+import window from '@videojs/global-compat/window';
 
 const DEFAULT_LOCATION = 'https://example.com';
 

@@ -1,4 +1,4 @@
-import window from 'global/window';
+import window from '@videojs/global-compat/window';
 
 // const log2 = Math.log2 ? Math.log2 : (x) => (Math.log(x) / Math.log(2));
 
