@@ -84,7 +84,7 @@
     "@videojs/babel-config": "^0.2.0",
     "@videojs/generator-helpers": "~2.0.1",
     "karma": "^5.2.3",
-    "rollup": "^2.38.0",
+    "rollup": "^2.80.0",
     "videojs-generate-karma-config": "^8.0.1",
     "videojs-generate-rollup-config": "~7.0.0",
     "videojs-generator-verify": "~3.0.3",
