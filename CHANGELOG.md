@@ -1,3 +1,14 @@
+<a name="4.1.2"></a>
+## [4.1.2](https://github.com/videojs/vhs-utils/compare/v4.1.1...v4.1.2) (2026-06-19)
+
+### Bug Fixes
+
+* add check for WEBVTT file header ([#45](https://github.com/videojs/vhs-utils/issues/45)) ([4833fd2](https://github.com/videojs/vhs-utils/commit/4833fd2))
+
+### Chores
+
+* Update CI actions ([#46](https://github.com/videojs/vhs-utils/issues/46)) ([e67a1d1](https://github.com/videojs/vhs-utils/commit/e67a1d1))
+
 <a name="4.1.1"></a>
 ## [4.1.1](https://github.com/videojs/vhs-utils/compare/v4.1.0...v4.1.1) (2024-07-10)
 
