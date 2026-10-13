@@ -54,6 +54,7 @@
     ]
   },
   "files": [
+    "CHANGELOG.md",
     "CONTRIBUTING.md",
     "es/",
     "cjs/",
