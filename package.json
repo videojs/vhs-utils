@@ -38,6 +38,9 @@
   "engines": {
     "node": "^22.13.0 || >=24"
   },
+  "overrides": {
+    "serialize-javascript": "^7.0.3"
+  },
   "keywords": [
     "videojs",
     "videojs-plugin"
@@ -84,9 +87,9 @@
     "@videojs/babel-config": "^0.2.0",
     "@videojs/generator-helpers": "~2.0.1",
     "karma": "^6.4.4",
-    "rollup": "^2.38.0",
+    "rollup": "^2.80.0",
     "videojs-generate-karma-config": "^8.1.0",
-    "videojs-generate-rollup-config": "~7.0.0",
+    "videojs-generate-rollup-config": "~7.0.2",
     "videojs-generator-verify": "~3.0.3",
     "videojs-standard": "^8.0.4"
   }
