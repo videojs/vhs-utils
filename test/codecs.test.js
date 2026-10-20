@@ -233,7 +233,7 @@ QUnit.test('returns falsey when no audio group ID', function(assert) {
   assert.notOk(
     codecsFromDefault(
       { mediaGroups: { AUDIO: {} } },
-      '',
+      ''
     ),
     'returns falsey when no audio group ID'
   );
