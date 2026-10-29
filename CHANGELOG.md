@@ -1,3 +1,10 @@
+<a name="4.1.3"></a>
+## [4.1.3](https://github.com/videojs/vhs-utils/compare/v4.1.2...v4.1.3) (2026-10-29)
+
+### Bug Fixes
+
+* update node, regenerate the lockfile and run the audit pass ([#48](https://github.com/videojs/vhs-utils/issues/48)) ([b711bd2](https://github.com/videojs/vhs-utils/commit/b711bd2))
+
 <a name="4.1.2"></a>
 ## [4.1.2](https://github.com/videojs/vhs-utils/compare/v4.1.1...v4.1.2) (2026-06-19)
 
