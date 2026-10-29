@@ -24,8 +24,6 @@ jobs:
         os: [ubuntu-latest]
         test-type: ['unit', 'coverage']
     env:
-      BROWSER_STACK_USERNAME: ${{secrets.BROWSER_STACK_USERNAME}}
-      BROWSER_STACK_ACCESS_KEY: ${{secrets.BROWSER_STACK_ACCESS_KEY}}
       CI_TEST_TYPE: ${{matrix.test-type}}
     runs-on: ${{matrix.os}}
     steps:
@@ -33,7 +31,7 @@ jobs:
       run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
     - name: checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: read node version from .nvmrc
       run: echo "NVMRC=$(cat .nvmrc)" >> $GITHUB_OUTPUT
@@ -64,12 +62,10 @@ jobs:
       run: npm i --prefer-offline --no-audit
 
     - name: run npm test
-      uses: GabrielBB/xvfb-action@v1
-      with:
-        run: npm run test
+      run: npm run test
 
     - name: coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         files: './test/dist/coverage/coverage-final.json'

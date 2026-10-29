@@ -5,6 +5,11 @@ module.exports = function(config) {
   // see https://github.com/videojs/videojs-generate-karma-config
   // for options
   const options = {
+    browsers(aboutToRun) {
+      return aboutToRun.filter(function(launcherName) {
+        return !(/^(Safari|Chromium)/).test(launcherName);
+      });
+    },
     serverBrowsers() {
       return [];
     }
